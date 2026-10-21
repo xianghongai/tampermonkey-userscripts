@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>禁译区 测试页</title>
+  <!--
+    用法：用浏览器直接打开本文件（file://），不需要安装到 Tampermonkey。
+    页面先引入仓库公共的 Tampermonkey API 替身 ../../test/gm-mock.js，预置自定义规则，再引入脚本本体。
+    file:// 页面的域名为空，路径是本文件在磁盘上的路径，所以路径规则写成以 / 开头、不带域名的键来测试；域名规则只能测不命中的情况。
+    也可以在 Chrome 里对本页使用「翻译成中文」，直观查看哪些内容保持原文。
+  -->
+  <style>
+    :root { color-scheme: light dark; }
+    body { margin: 0 auto; max-width: 960px; padding: 24px 16px; font: 14px/1.6 system-ui, sans-serif; }
+    h1 { font-size: 20px; }
+    h2 { margin-top: 32px; font-size: 16px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 4px 8px; border-bottom: 1px solid #8884; text-align: left; vertical-align: top; }
+    .pass { color: #1a7f37; }
+    .fail { color: #cf222e; font-weight: 600; }
+    .sample { padding: 8px 12px; border: 1px dashed #8888; border-radius: 6px; }
+    [translate="no"] { outline: 2px solid #4ac26b80; }
+  </style>
+</head>
+<body>
+  <h1>禁译区 测试页</h1>
+
+  <h2>自动测试</h2>
+  <p><button id="run" type="button">运行自动测试</button> <span id="summary"></span></p>
+  <table>
+    <thead><tr><th>场景</th><th>期望</th><th>实际</th><th>结果</th></tr></thead>
+    <tbody id="results"></tbody>
+  </table>
+
+  <h2>样例内容</h2>
+  <p>绿色描边的元素已被标记为不翻译。</p>
+  <div class="sample" id="samples">
+    <p id="plain">This paragraph should be translated.</p>
+    <pre id="pre">const greeting = 'Hello world';</pre>
+    <p>Call <code id="code">getElementById()</code> to find an element, press <kbd id="kbd">Ctrl</kbd>, and read <samp id="samp">File not found</samp>.</p>
+    <p id="custom" class="custom-path">Custom rule by path should keep this text.</p>
+    <p id="other-host" class="other-host">Rule for another domain should not apply here.</p>
+    <p id="boundary" class="boundary">Rule for a sibling path should not apply here.</p>
+    <p id="valid-after-invalid" class="valid-after-invalid">Valid selector next to an invalid one still applies.</p>
+    <p id="preset" translate="no">Already marked by the page itself.</p>
+  </div>
+
+  <script src="../../test/gm-mock.js" data-name="No-Translate Zones (test page)"></script>
+  <script>
+    // file:// 页面的域名为空，以 / 开头的键会被当作「空域名 + 路径」，正好匹配本文件所在目录
+    const DIR = location.pathname.slice(0, location.pathname.lastIndexOf('/'));
+    GM_mock.values.set('rules', {
+      [DIR]: ['.custom-path', '.valid-after-invalid', 'p[[invalid'],
+      'example.com': ['.other-host'],
+      [`${DIR}-old`]: ['.boundary'],
+    });
+  </script>
+  <script src="../no-translate-zones.user.js"></script>
+  <script>
+    // ---------- 自动测试 ----------
+    const $ = (id) => document.getElementById(id);
+    const marked = (el) => el.getAttribute('translate') === 'no' && el.classList.contains('notranslate');
+    // 脚本在短暂延迟后合并标记，等它执行完再断言
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 200));
+
+    const cases = [
+      ['通用规则：pre、code、kbd、samp', async () => ['pre', 'code', 'kbd', 'samp'].map((id) => marked($(id))).join('|'), 'true|true|true|true'],
+      ['普通段落不标记', async () => $('plain').hasAttribute('translate'), false],
+      ['自定义规则：路径命中', async () => marked($('custom')), true],
+      ['自定义规则：其他域名不命中', async () => $('other-host').hasAttribute('translate'), false],
+      ['路径规则不命中同名前缀的兄弟路径（/docs 不命中 /docs-old）', async () => $('boundary').hasAttribute('translate'), false],
+      ['写错的选择器被剔除，同组其他选择器仍生效', async () => marked($('valid-after-invalid')), true],
+      ['页面已标记的元素保持原样', async () => $('preset').classList.contains('notranslate'), false],
+      ['后续加入的内容自动标记', async () => {
+        const code = document.createElement('code');
+        code.textContent = 'lateCode()';
+        $('samples').append(code);
+        await settle();
+        const result = marked(code);
+        code.remove();
+        return result;
+      }, true],
+      ['运行中修改自定义规则，后续变化时生效', async () => {
+        GM_mock.values.set('rules', { ...GM_mock.values.get('rules'), [DIR]: ['.custom-path', '.late-rule'] });
+        const p = document.createElement('p');
+        p.className = 'late-rule';
+        p.textContent = 'Added after the rule changed.';
+        $('samples').append(p);
+        await settle();
+        const result = marked(p);
+        p.remove();
+        return result;
+      }, true],
+      ['已有自定义规则时不覆盖', async () => GM_mock.callsOf('GM_setValue').length, 0],
+    ];
+
+    function show(value) {
+      return JSON.stringify(value);
+    }
+
+    $('run').addEventListener('click', async () => {
+      await settle();
+      const tbody = $('results');
+      tbody.textContent = '';
+      let failed = 0;
+      for (const [name, run, expected] of cases) {
+        let actual;
+        try {
+          actual = await run();
+        } catch (err) {
+          actual = `Error: ${err.message}`;
+        }
+        const ok = actual === expected;
+        if (!ok) failed += 1;
+        const row = tbody.insertRow();
+        row.insertCell().textContent = name;
+        row.insertCell().textContent = show(expected);
+        row.insertCell().textContent = show(actual);
+        const result = row.insertCell();
+        result.textContent = ok ? '通过' : '失败';
+        result.className = ok ? 'pass' : 'fail';
+      }
+      const summary = $('summary');
+      summary.textContent = failed ? `${failed} 项失败，共 ${cases.length} 项` : `全部通过，共 ${cases.length} 项`;
+      summary.className = failed ? 'fail' : 'pass';
+    });
+  </script>
+</body>
+</html>
