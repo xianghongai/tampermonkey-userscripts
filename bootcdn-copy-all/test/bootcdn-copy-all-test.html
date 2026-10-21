@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BootCDN 一键复制全部 测试页</title>
+  <!--
+    用法：用浏览器直接打开本文件（file://），不需要安装到 Tampermonkey。
+    页面仿照 BootCDN 库页面的结构，先引入仓库公共的 Tampermonkey API 替身 ../../test/gm-mock.js，再引入 ../bootcdn-copy-all.user.js。
+    「自动测试」模拟切换版本、筛选文件类型、切换协议后逐项断言；页面上的按钮也可以手动点击，结果显示在复制记录里。
+  -->
+  <style>
+    :root { color-scheme: light dark; }
+    body { margin: 0 auto; max-width: 960px; padding: 24px 16px; font: 14px/1.6 system-ui, sans-serif; }
+    h1 { font-size: 20px; }
+    h2 { margin-top: 32px; font-size: 16px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 4px 8px; border-bottom: 1px solid #8884; text-align: left; vertical-align: top; }
+    td code { white-space: pre-wrap; word-break: break-all; }
+    .pass { color: #1a7f37; }
+    .fail { color: #cf222e; font-weight: 600; }
+    .items-container { padding: 12px; border: 1px dashed #8888; border-radius: 6px; }
+    .file-items { padding-left: 20px; }
+    #log { min-height: 80px; max-height: 240px; overflow: auto; padding: 8px; border-radius: 6px; background: #8881; font: 12px/1.5 ui-monospace, monospace; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>BootCDN 一键复制全部 测试页</h1>
+
+  <h2>自动测试</h2>
+  <p><button id="run" type="button">运行自动测试</button> <span id="summary"></span></p>
+  <table>
+    <thead><tr><th>场景</th><th>期望</th><th>实际</th><th>结果</th></tr></thead>
+    <tbody id="results"></tbody>
+  </table>
+
+  <h2>仿 BootCDN 库页面</h2>
+  <p>
+    模拟操作：
+    <button type="button" data-version="1.0.0">切换到 1.0.0</button>
+    <button type="button" data-version="2.0.0">切换到 2.0.0</button>
+    <button type="button" data-filetype="全部">全部</button>
+    <button type="button" data-filetype="js">只看 JS</button>
+    <button type="button" data-filetype="css">只看 CSS</button>
+    <button type="button" data-protocol="https">https</button>
+    <button type="button" data-protocol="relative">相对协议</button>
+  </p>
+  <main class="items-container">
+    <h5>版本：<button type="button" class="btnVer">2.0.0</button> 文件：<button type="button" class="btnFile">全部</button></h5>
+    <div class="packageItem"></div>
+  </main>
+
+  <h2>复制记录</h2>
+  <div id="log"></div>
+
+  <script>
+    // ---------- 仿照 BootCDN 的页面行为 ----------
+    // 切换版本时站点用 jQuery.load 整体替换 .packageItem；筛选文件类型时隐藏 li；切换协议时改写链接文字
+    const BASE = 'https://cdn.bootcdn.net/ajax/libs/demo';
+    const FILES = {
+      '1.0.0': ['demo.js', 'demo.min.js'],
+      '2.0.0': ['demo.js', 'demo.min.js', 'demo.css', 'demo.min.css', 'demo.min.js.map'],
+    };
+
+    function filetype(name) {
+      return name.endsWith('.map') ? 'map' : name.split('.').pop();
+    }
+
+    function switchVersion(version) {
+      document.querySelector('.btnVer').textContent = version;
+      document.querySelector('.packageItem').innerHTML = `
+        <input type="hidden" class="current_version" value="${version}">
+        <ul class="list-group file-items">
+          ${FILES[version].map((name) => `
+            <li class="list-group-item library js-https" data-filetype="${filetype(name)}">
+              <div class="zero-clipboard"><span class="btn btn-clipboard">复制链接</span></div>
+              <span class="library-url">${BASE}/${version}/${name}</span>
+            </li>`).join('')}
+        </ul>`;
+    }
+
+    function filterFiles(type) {
+      document.querySelector('.btnFile').textContent = type;
+      for (const li of document.querySelectorAll('.file-items li')) {
+        li.style.display = type === '全部' || li.dataset.filetype === type ? '' : 'none';
+      }
+    }
+
+    function switchProtocol(protocol) {
+      for (const el of document.querySelectorAll('.library-url')) {
+        const rest = el.textContent.replace(/^https?:/i, '');
+        el.textContent = protocol === 'relative' ? rest : `https:${rest}`;
+      }
+    }
+
+    switchVersion('2.0.0');
+    document.addEventListener('click', (event) => {
+      const { version, filetype: type, protocol } = event.target.dataset ?? {};
+      if (version) switchVersion(version);
+      if (type) filterFiles(type);
+      if (protocol) switchProtocol(protocol);
+    });
+  </script>
+  <script src="../../test/gm-mock.js" data-name="BootCDN: Copy All (test page)"></script>
+  <script>
+    GM_mock.addEventListener('call', ({ detail }) => {
+      if (detail.name !== 'GM_setClipboard') return;
+      const log = document.getElementById('log');
+      log.textContent += `${new Date().toLocaleTimeString()}\n${detail.args[0]}\n\n`;
+      log.scrollTop = log.scrollHeight;
+    });
+  </script>
+  <script src="../bootcdn-copy-all.user.js"></script>
+  <script>
+    // ---------- 自动测试 ----------
+    const buttons = () => [...document.querySelectorAll('.user-script-bootcdn-copy-all-button')];
+    const linkButton = () => buttons()[0];
+    const tagButton = () => buttons()[1];
+
+    // 点击按钮，返回这次复制的内容；没有复制时返回 undefined
+    function copyWith(btn) {
+      GM_mock.reset();
+      btn.click();
+      return GM_mock.lastCopied;
+    }
+
+    const urls = (version, names) => names.map((name) => `${BASE}/${version}/${name}`).join('\n');
+
+    const cases = [
+      ['按钮插入工具栏，类名带前缀', () => [
+        buttons().length,
+        document.querySelector('main.items-container > h5 > .user-script-bootcdn-copy-all-actions') !== null,
+      ].join('|'), '2|true'],
+      ['复制全部链接', () => copyWith(linkButton()), urls('2.0.0', FILES['2.0.0'])],
+      ['复制全部标签：JS、CSS 生成标签，map 跳过', () => copyWith(tagButton()), [
+        `<script src="${BASE}/2.0.0/demo.js"><\/script>`,
+        `<script src="${BASE}/2.0.0/demo.min.js"><\/script>`,
+        `<link href="${BASE}/2.0.0/demo.css" rel="stylesheet">`,
+        `<link href="${BASE}/2.0.0/demo.min.css" rel="stylesheet">`,
+      ].join('\n')],
+      ['复制后按钮显示条数', () => (copyWith(linkButton()), linkButton().textContent.trim()), '已复制 5 条'],
+      ['筛选 CSS 后只复制显示的文件', () => (filterFiles('css'), copyWith(linkButton())), urls('2.0.0', ['demo.css', 'demo.min.css'])],
+      ['筛选 JS 后复制标签', () => (filterFiles('js'), copyWith(tagButton())), [
+        `<script src="${BASE}/2.0.0/demo.js"><\/script>`,
+        `<script src="${BASE}/2.0.0/demo.min.js"><\/script>`,
+      ].join('\n')],
+      ['切换版本后复制新版本的文件', () => (switchVersion('1.0.0'), copyWith(linkButton())), urls('1.0.0', FILES['1.0.0'])],
+      ['切换版本后按钮不重复插入', () => buttons().length, 2],
+      ['切换为相对协议后跟随', () => (switchProtocol('relative'), copyWith(linkButton())), urls('1.0.0', FILES['1.0.0']).replaceAll('https:', '')],
+      ['只有 map 文件时：标签按钮不复制并提示', () => {
+        switchVersion('2.0.0');
+        filterFiles('map');
+        const copied = copyWith(tagButton());
+        return [String(copied), tagButton().textContent.trim()].join('|');
+      }, 'undefined|没有可复制的文件'],
+      ['全部隐藏时：链接按钮不复制', () => (filterFiles('scss'), String(copyWith(linkButton()))), 'undefined'],
+    ];
+
+    function show(value) {
+      return value === undefined ? '（未复制）' : JSON.stringify(value);
+    }
+
+    document.getElementById('run').addEventListener('click', () => {
+      // 每轮从同一个初始状态开始
+      switchVersion('2.0.0');
+      filterFiles('全部');
+      switchProtocol('https');
+
+      const tbody = document.getElementById('results');
+      tbody.textContent = '';
+      let failed = 0;
+      for (const [name, run, expected] of cases) {
+        let actual;
+        try {
+          actual = run();
+        } catch (err) {
+          actual = `Error: ${err.message}`;
+        }
+        const ok = actual === expected;
+        if (!ok) failed += 1;
+        const row = tbody.insertRow();
+        row.insertCell().textContent = name;
+        row.insertCell().innerHTML = '<code></code>';
+        row.cells[1].firstChild.textContent = show(expected);
+        row.insertCell().innerHTML = '<code></code>';
+        row.cells[2].firstChild.textContent = show(actual);
+        const result = row.insertCell();
+        result.textContent = ok ? '通过' : '失败';
+        result.className = ok ? 'pass' : 'fail';
+      }
+
+      switchVersion('2.0.0');
+      filterFiles('全部');
+      const summary = document.getElementById('summary');
+      summary.textContent = failed ? `${failed} 项失败，共 ${cases.length} 项` : `全部通过，共 ${cases.length} 项`;
+      summary.className = failed ? 'fail' : 'pass';
+    });
+  </script>
+</body>
+</html>
