@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gist 下载命令 测试页</title>
+  <!--
+    用法：用浏览器直接打开本文件（file://），不需要安装到 Tampermonkey。
+    页面仿照 Gist 详情页的文件列表结构，先引入仓库公共的 Tampermonkey API 替身 ../../test/gm-mock.js，再引入 ../gist-download-command.user.js。
+    「自动测试」按「无清单 / 有清单」与「公开 / 私有」组合的场景逐项断言复制的命令；页面上的按钮也可以手动点击，结果显示在复制记录里。
+  -->
+  <style>
+    :root { color-scheme: light dark; }
+    body { margin: 0 auto; max-width: 960px; padding: 24px 16px; font: 14px/1.6 system-ui, sans-serif; }
+    h1 { font-size: 20px; }
+    h2 { margin-top: 32px; font-size: 16px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 4px 8px; border-bottom: 1px solid #8884; text-align: left; vertical-align: top; }
+    td code { white-space: pre-wrap; word-break: break-all; }
+    .pass { color: #1a7f37; }
+    .fail { color: #cf222e; font-weight: 600; }
+    .file { margin: 8px 0; border: 1px solid #8886; border-radius: 6px; }
+    .file-header { display: flex; align-items: center; padding: 8px 16px; }
+    .file-info { display: flex; align-items: center; flex: auto; }
+    .file-actions { order: 2; }
+    .file-body { padding: 8px 16px; border-top: 1px solid #8886; font: 12px ui-monospace, monospace; }
+    #log { min-height: 80px; max-height: 240px; overflow: auto; padding: 8px; border-radius: 6px; background: #8881; font: 12px/1.5 ui-monospace, monospace; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Gist 下载命令 测试页</h1>
+
+  <h2>自动测试</h2>
+  <p><button id="run" type="button">运行自动测试</button> <span id="summary"></span></p>
+  <table>
+    <thead><tr><th>场景</th><th>期望</th><th>实际</th><th>结果</th></tr></thead>
+    <tbody id="results"></tbody>
+  </table>
+
+  <h2>仿 Gist 详情页</h2>
+  <p>
+    模拟操作：
+    <button type="button" data-manifest="false">无清单</button>
+    <button type="button" data-manifest="true">有清单</button>
+    <button type="button" data-secret="false">公开</button>
+    <button type="button" data-secret="true">私有</button>
+  </p>
+  <div class="gisthead">
+    <strong>octo / example</strong> <span class="label-slot"></span>
+    <div itemprop="about">示例 Gist</div>
+  </div>
+  <div id="files"></div>
+
+  <h2>复制记录</h2>
+  <div id="log"></div>
+
+  <script>
+    // ---------- 仿照 Gist 详情页 ----------
+    const GIST_ID = 'aa5a315d61ae9438b18d';
+
+    // 清单只用到条目的 remote 与 path：字符串路径、多平台目录路径各一个，odd 文件不在清单中
+    const MANIFEST = {
+      entries: {
+        'example-config.json': {
+          path: '~/.config/example/settings.json',
+        },
+        'app-keys': {
+          remote: 'app-keys.conf',
+          path: { default: '~/.config/example/', macos: '~/Library/Application Support/Example/' },
+        },
+      },
+    };
+    const CONTENT = ['example-config.json', 'app-keys.conf', 'odd "$name`.txt'];
+
+    // Raw 链接带修订版本号，脚本按链接缓存清单；需要重新请求清单的用例换一个修订
+    function rawUrl(name, sha) {
+      return `https://gist.github.com/octo/${GIST_ID}/raw/${sha}/${encodeURIComponent(name)}`;
+    }
+
+    // Gist 改版后文件区会整体重渲染，这里同样整体替换
+    function render({ manifest = false, secret = false, sha = '0123abcd' } = {}) {
+      document.querySelector('.label-slot').innerHTML = secret ? '<span class="Label">Secret</span>' : '';
+      const names = manifest ? ['.manifest.json', ...CONTENT] : CONTENT;
+      const files = document.getElementById('files');
+      files.textContent = '';
+      for (const name of names) {
+        const file = document.createElement('div');
+        file.className = 'file';
+        file.innerHTML = `
+          <div class="file-header">
+            <div class="file-actions"><a href="">Raw</a></div>
+            <div class="file-info"><a href=""><strong class="gist-blob-name"></strong></a></div>
+          </div>
+          <div class="file-body">…</div>`;
+        file.querySelector('.file-actions a').href = rawUrl(name, sha);
+        file.querySelector('.gist-blob-name').textContent = `\n  ${name}\n`;
+        files.append(file);
+      }
+      state = { manifest, secret, sha };
+    }
+
+    let state = {};
+    render();
+    document.addEventListener('click', (event) => {
+      const { manifest, secret } = event.target.dataset ?? {};
+      if (manifest !== undefined) render({ ...state, manifest: manifest === 'true' });
+      if (secret !== undefined) render({ ...state, secret: secret === 'true' });
+    });
+  </script>
+  <script src="../../test/gm-mock.js" data-name="Gist: Download Commands (test page)"></script>
+  <script>
+    GM_mock.addEventListener('call', ({ detail }) => {
+      if (detail.name !== 'GM_setClipboard') return;
+      const log = document.getElementById('log');
+      log.textContent += `${new Date().toLocaleTimeString()}\n${detail.args[0]}\n\n`;
+      log.scrollTop = log.scrollHeight;
+    });
+
+    // 清单的 Raw 请求返回 MANIFEST；manifestStatus 不为 200 时模拟请求失败
+    let manifestStatus = 200;
+    // slowManifest 为 true 时清单延迟返回，用于观察加载中的按钮状态
+    let slowManifest = false;
+    function interceptManifest() {
+      GM_mock.intercept(({ url }) => {
+        if (/\/raw\/[0-9a-f]+\/\.manifest\.json$/.test(url)) {
+          const res = manifestStatus === 200 ? { responseText: JSON.stringify(MANIFEST) } : { status: manifestStatus };
+          return slowManifest ? new Promise((resolve) => setTimeout(() => resolve(res), 400)) : res;
+        }
+      });
+    }
+    interceptManifest();
+  </script>
+  <script src="../gist-download-command.user.js"></script>
+  <script>
+    // ---------- 自动测试 ----------
+    const P = 'user-script-gist-download-command';
+    const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve)));
+    const stateOf = (el) => el.dataset.userScriptGistDownloadCommandState;
+
+    function fileButtons(name) {
+      const file = [...document.querySelectorAll('.file')].find((f) => f.querySelector('.gist-blob-name').textContent.trim() === name);
+      return file ? [...file.querySelectorAll(`.${P}-btn`)] : [];
+    }
+
+    // 按钮显示图标时没有文字，按 data 属性上的原文字查找
+    const fileButton = (name, label) => fileButtons(name).find((b) => b.dataset.userScriptGistDownloadCommandLabel === label);
+
+    // 点击某个文件的 gh 或 curl 按钮，返回这次复制的内容；没有复制时返回按钮的提示
+    async function copy(name, label) {
+      await nextFrame();
+      GM_mock.reset();
+      interceptManifest();
+      const btn = fileButton(name, label);
+      btn.click();
+      for (let i = 0; i < 20 && !/done|error/.test(stateOf(btn) ?? ''); i++) await nextFrame();
+      return GM_mock.lastCopied ?? btn.title;
+    }
+
+    const popover = () => document.querySelector(`.${P}-popover`);
+    const menuItems = () => [...document.querySelectorAll(`.${P}-item`)];
+    const closeMenu = () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+
+    // 点击按钮并等待多平台选择框出现，返回各项「平台键=路径」；没有弹出时返回复制的内容
+    async function openMenu(name, label) {
+      await nextFrame();
+      GM_mock.reset();
+      interceptManifest();
+      fileButton(name, label).click();
+      for (let i = 0; i < 20 && !popover() && GM_mock.lastCopied === undefined; i++) await nextFrame();
+      if (!popover()) return GM_mock.lastCopied ?? '（未弹出）';
+      return menuItems().map((item) => `${item.querySelector(`.${P}-key`).textContent}=${item.querySelector(`.${P}-path`).textContent}`).join('|');
+    }
+
+    // 点击选择框中某个平台那一行的复制按钮，返回复制的内容
+    function copyItem(key) {
+      GM_mock.reset();
+      const item = menuItems().find((el) => el.querySelector(`.${P}-key`).textContent === key);
+      item.querySelector(`.${P}-copy`).click();
+      return GM_mock.lastCopied;
+    }
+
+    async function setup({ manifest = false, secret = false, status = 200, sha } = {}) {
+      closeMenu();
+      manifestStatus = status;
+      render({ manifest, secret, sha });
+      await nextFrame();
+    }
+
+    const H = '"$HOME';
+    const publicCurl = (name, out) => `curl -L "https://gist.github.com/${GIST_ID}/raw/${encodeURIComponent(name)}" -o ${out}`;
+    const secretCurl = (name, out) => [
+      'curl -sL \\',
+      '  -H "Authorization: Bearer $GIST_ONLY_GITHUB_ACCESS_TOKEN" \\',
+      '  "$(curl -sL -H "Authorization: Bearer $GIST_ONLY_GITHUB_ACCESS_TOKEN" \\',
+      `    "https://api.github.com/gists/${GIST_ID}" \\`,
+      `    | jq -r --arg f "${name}" '.files[$f].raw_url')" \\`,
+      `  -o ${out}`,
+    ].join('\n');
+    const SETTINGS = `${H}/.config/example/settings.json"`;
+    const APP_KEYS_DEFAULT = `${H}/.config/example/app-keys.conf"`;
+    const APP_KEYS_MACOS = `${H}/Library/Application Support/Example/app-keys.conf"`;
+
+    const cases = [
+      // ---------- 通用 ----------
+      ['每个文件名右侧插入 gh、curl 两个按钮', async () => {
+        await setup();
+        return fileButtons('app-keys.conf').map((b) => b.textContent).join('|') + `|${document.querySelectorAll(`.${P}-btn`).length}`;
+      }, `gh|curl|${CONTENT.length * 2}`],
+      ['重渲染后按钮不重复插入', async () => {
+        await setup();
+        render();
+        await nextFrame();
+        return document.querySelectorAll(`.${P}-btn`).length;
+      }, CONTENT.length * 2],
+
+      // ---------- 无清单 · 公开 ----------
+      ['无清单 · 公开：gh 命令 > 后留空', async () => (await setup(), copy('example-config.json', 'gh')),
+        `gh gist view "${GIST_ID}" -f "example-config.json" --raw > `],
+      ['无清单 · 公开：curl 命令 -o 后留空', async () => (await setup(), copy('example-config.json', 'curl')),
+        publicCurl('example-config.json', '')],
+      ['无清单 · 公开：文件名含特殊字符时双引号内转义，URL 编码', async () => {
+        await setup();
+        return [await copy('odd "$name`.txt', 'gh'), await copy('odd "$name`.txt', 'curl')].join('\n');
+      }, [
+        `gh gist view "${GIST_ID}" -f "odd \\"\\$name\\\`.txt" --raw > `,
+        publicCurl('odd "$name`.txt', ''),
+      ].join('\n')],
+
+      // ---------- 无清单 · 私有 ----------
+      ['无清单 · 私有：curl 用环境变量里的 Token 经 API 取 raw_url，-o 后留空', async () => (await setup({ secret: true }), copy('example-config.json', 'curl')),
+        secretCurl('example-config.json', '')],
+      ['无清单 · 私有：gh 命令与公开时相同', async () => (await setup({ secret: true }), copy('example-config.json', 'gh')),
+        `gh gist view "${GIST_ID}" -f "example-config.json" --raw > `],
+
+      // ---------- 有清单 · 公开 ----------
+      ['有清单 · 公开：gh 先建目录再写入清单路径，~ 换成 $HOME', async () => (await setup({ manifest: true }), copy('example-config.json', 'gh')),
+        `mkdir -p ${H}/.config/example" && gh gist view "${GIST_ID}" -f "example-config.json" --raw > ${SETTINGS}`],
+      ['有清单 · 公开：curl 写入清单路径并 --create-dirs', async () => (await setup({ manifest: true }), copy('example-config.json', 'curl')),
+        publicCurl('example-config.json', `${SETTINGS} --create-dirs`)],
+      ['有清单 · 公开：清单里没有的文件不填路径', async () => (await setup({ manifest: true }), copy('odd "$name`.txt', 'curl')),
+        publicCurl('odd "$name`.txt', '')],
+      ['有清单 · 公开：多平台路径弹出选择框，列出各平台，目录路径补上文件名', async () => (await setup({ manifest: true }), openMenu('app-keys.conf', 'gh')),
+        'default=~/.config/example/app-keys.conf|macos=~/Library/Application Support/Example/app-keys.conf'],
+      ['有清单 · 公开：弹出选择框时不复制', async () => (await setup({ manifest: true }), await openMenu('app-keys.conf', 'gh'), String(GM_mock.lastCopied)),
+        'undefined'],
+      ['有清单 · 公开：选择框中点复制按钮复制 gh 命令，路径含空格', async () => (await setup({ manifest: true }), await openMenu('app-keys.conf', 'gh'), copyItem('macos')),
+        `mkdir -p ${H}/Library/Application Support/Example" && gh gist view "${GIST_ID}" -f "app-keys.conf" --raw > ${APP_KEYS_MACOS}`],
+      ['有清单 · 公开：选择框复制后不关闭，可接着复制其他平台的 curl 命令', async () => {
+        await setup({ manifest: true });
+        await openMenu('app-keys.conf', 'curl');
+        copyItem('macos');
+        return copyItem('default');
+      }, publicCurl('app-keys.conf', `${APP_KEYS_DEFAULT} --create-dirs`)],
+      ['有清单 · 公开：选择框按 Esc 关闭，再点同一按钮也关闭', async () => {
+        await setup({ manifest: true });
+        await openMenu('app-keys.conf', 'gh');
+        closeMenu();
+        const afterEsc = String(popover());
+        await openMenu('app-keys.conf', 'gh');
+        fileButton('app-keys.conf', 'gh').click();
+        await nextFrame();
+        return `${afterEsc}|${popover()}`;
+      }, 'null|null'],
+      ['有清单 · 公开：清单加载中按钮显示加载状态，加载完成后复制并显示成功', async () => {
+        slowManifest = true;
+        try {
+          await setup({ manifest: true, sha: '89ab0123' });
+          GM_mock.reset();
+          interceptManifest();
+          const btn = fileButton('example-config.json', 'gh');
+          btn.click();
+          await nextFrame();
+          const busy = `${stateOf(btn)}:${GM_mock.lastCopied === undefined}`;
+          for (let i = 0; i < 50 && stateOf(btn) === 'busy'; i++) await new Promise((r) => setTimeout(r, 50));
+          return `${busy}|${stateOf(btn)}:${GM_mock.lastCopied?.includes('settings.json')}`;
+        } finally {
+          slowManifest = false;
+        }
+      }, 'busy:true|done:true'],
+      ['有清单 · 公开：清单请求失败时不复制，按钮提示原因', async () => (await setup({ manifest: true, status: 404, sha: '4567cdef' }), copy('example-config.json', 'gh')),
+        'Copy failed: manifest HTTP 404'],
+
+      // ---------- 有清单 · 私有 ----------
+      ['有清单 · 私有：curl 写入清单路径并 --create-dirs', async () => (await setup({ manifest: true, secret: true }), copy('example-config.json', 'curl')),
+        secretCurl('example-config.json', `${SETTINGS} --create-dirs`)],
+      ['有清单 · 私有：选择框中复制 curl 命令', async () => (await setup({ manifest: true, secret: true }), await openMenu('app-keys.conf', 'curl'), copyItem('default')),
+        secretCurl('app-keys.conf', `${APP_KEYS_DEFAULT} --create-dirs`)],
+    ];
+
+    function show(value) {
+      return value === undefined ? '（未复制）' : JSON.stringify(value);
+    }
+
+    document.getElementById('run').addEventListener('click', async () => {
+      const tbody = document.getElementById('results');
+      tbody.textContent = '';
+      let failed = 0;
+      for (const [name, run, expected] of cases) {
+        let actual;
+        try {
+          actual = await run();
+        } catch (err) {
+          actual = `Error: ${err.message}`;
+        }
+        const ok = actual === expected;
+        if (!ok) failed += 1;
+        const row = tbody.insertRow();
+        row.insertCell().textContent = name;
+        row.insertCell().innerHTML = '<code></code>';
+        row.cells[1].firstChild.textContent = show(expected);
+        row.insertCell().innerHTML = '<code></code>';
+        row.cells[2].firstChild.textContent = show(actual);
+        const result = row.insertCell();
+        result.textContent = ok ? '通过' : '失败';
+        result.className = ok ? 'pass' : 'fail';
+      }
+
+      await setup();
+      const summary = document.getElementById('summary');
+      summary.textContent = failed ? `${failed} 项失败，共 ${cases.length} 项` : `全部通过，共 ${cases.length} 项`;
+      summary.className = failed ? 'fail' : 'pass';
+    });
+  </script>
+</body>
+</html>

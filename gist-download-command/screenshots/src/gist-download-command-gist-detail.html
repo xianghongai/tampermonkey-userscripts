@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<!--
+  Scene: a Gist detail page with "Gist: Download Commands" active
+  (gist-download-command.user.js). Mirrors the script's current behaviour:
+    - a gh and a curl button follow each file name, inside the file header
+    - .manifest.json maps a Gist file to a local path; a path object gives one
+      path per platform, here default and macos
+    - the side note shows the other form: a single path string, which copies the
+      command directly instead of opening a platform list
+    - clicking gh on app-keys.conf opens the list of platform paths; the row for
+      the current platform (default on Linux) is marked, each row has its own copy
+      button, and the copied row shows a check while the list stays open
+  Buttons are in their normal state, except the clicked-into copied state, which the
+  script itself shows. Toolbar: the Tampermonkey icon, then the browser menu.
+  Sample data: GitHub's standard identity octocat, a fake Gist ID and placeholder paths.
+  Opens directly in a browser; _partials/ is copied next to this file by render.sh.
+  Render from the project root:
+    ~/.agents/skills/extension-screenshots/scripts/render.sh gist-download-command/screenshots/src/gist-download-command-gist-detail.html \
+      gist-download-command/screenshots/gist-download-command-gist-detail-1280x800.png
+-->
+<link rel="stylesheet" href="_partials/browser.css">
+<link rel="stylesheet" href="_partials/github.css">
+<script defer src="_partials/browser.js"></script>
+<script defer src="_partials/github.js"></script>
+<style>
+  .gist-page { width: 880px; margin: 0 auto; padding: 12px 0 0; }
+
+  .pagehead { display: flex; align-items: center; padding-bottom: 12px; border-bottom: 1px solid #d1d9e0; }
+  .avatar { width: 32px; height: 32px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: #eaeef2; color: #59636e; }
+  .avatar gh-icon svg { width: 20px; height: 20px; }
+  .head-main { margin-left: 10px; }
+  .head-name { font-size: 20px; font-weight: 400; line-height: 1.3; }
+  .head-name .owner { color: #0969da; }
+  .head-name .slash { margin: 0 4px; color: #59636e; }
+  .head-name .repo { font-weight: 600; }
+  .head-note { margin-top: 2px; font-size: 12px; color: #59636e; }
+
+  .head-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .btn { height: 28px; padding: 0 12px; border: 1px solid #d1d9e0; border-radius: 6px; background: #f6f8fa; font-size: 12px; font-weight: 500; color: #1f2328; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .btn gh-icon { color: #59636e; }
+
+  .about { margin: 10px 0 12px; font-size: 14px; color: #1f2328; }
+
+  .file { border: 1px solid #d1d9e0; border-radius: 6px; }
+  .file + .file { margin-top: 14px; }
+  .file-header { display: flex; align-items: center; min-height: 40px; padding: 0 12px; }
+  .file-icon { margin-right: 6px; color: #59636e; display: inline-flex; }
+  .file-name { font-size: 13px; font-weight: 600; color: #1f2328; }
+  .file-actions { margin-left: auto; display: flex; align-items: center; }
+
+  /* The script's own buttons: same metrics and colours as gist-download-command.user.js */
+  .gdc-btn { display: inline-flex; align-items: center; justify-content: center; gap: 2px; min-width: 32px; flex-shrink: 0; height: 20px; margin-left: 6px; padding: 0 6px; border: 1px solid #d1d9e0; border-radius: 6px; background: transparent; color: #59636e; font: 500 12px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .gdc-btn + .gdc-btn { margin-left: 4px; }
+
+  /* The script's multi-platform list: anchored above the clicked button */
+  .gdc-pop-anchor { position: relative; display: inline-flex; margin-left: 6px; }
+  .gdc-pop-anchor .gdc-btn { margin-left: 0; }
+  .gdc-pop-anchor + .gdc-btn { margin-left: 4px; }
+  .gdc-popover { position: absolute; z-index: 100; left: 0; bottom: calc(100% + 4px); max-width: min(560px, calc(100vw - 16px)); margin: 0; padding: 4px; border: 1px solid #d1d9e0; border-radius: 8px; background: #ffffff; box-shadow: 0 6px 12px -3px #25292e0a, 0 6px 18px 0 #25292e1f; list-style: none; }
+  .gdc-item { display: flex; align-items: center; gap: 8px; padding: 2px 4px 2px 8px; border-radius: 6px; color: #1f2328; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .gdc-key { flex-shrink: 0; min-width: 56px; color: #59636e; }
+  .gdc-item.gdc-current .gdc-key { color: #0969da; font-weight: 600; }
+  .gdc-path { flex: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gdc-copy { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: #59636e; opacity: .5; }
+  .gdc-copy.gdc-copied { opacity: 1; color: #1a7f37; }
+
+  .code { border-top: 1px solid #d1d9e0; padding: 8px 0; }
+
+  /* Side note: the other way to declare a path in .manifest.json */
+  .callout.hint { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding: 7px 10px; }
+  .hint-title { font-size: 11px; font-weight: 500; line-height: 1.4; }
+  .hint-code { font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+</style>
+</head>
+<body>
+  <browser-window favicon="github" toolbar="tampermonkey"
+    tab-title="Example app config · GitHub"
+    url="gist.github.com/octocat/0123456789abcdef0123">
+    <div class="gist-page">
+      <div class="pagehead">
+        <span class="avatar"><gh-icon name="mark"></gh-icon></span>
+        <div class="head-main">
+          <h1 class="head-name">
+            <a class="owner" href="#">octocat</a><span class="slash">/</span><span class="repo">app-config</span>
+          </h1>
+          <div class="head-note">Created Oct 12, 2026 10:24</div>
+        </div>
+        <div class="head-actions">
+          <span class="btn"><gh-icon name="star"></gh-icon>Star <b>24</b></span>
+          <span class="btn"><gh-icon name="fork"></gh-icon>Fork <b>13</b></span>
+        </div>
+      </div>
+
+      <div class="about">Example app config</div>
+
+      <div class="file">
+        <div class="file-header">
+          <span class="callout-anchor">
+            <span class="file-icon"><gh-icon name="code"></gh-icon></span>
+            <span class="file-name">.manifest.json</span>
+            <button class="gdc-btn" type="button">gh</button>
+            <button class="gdc-btn" type="button">curl</button>
+            <span class="callout right">Maps each file to a local path per platform</span>
+          </span>
+          <div class="file-actions"><span class="btn">Raw</span></div>
+        </div>
+        <div class="code">
+          <div class="code-line"><span class="ln">1</span><span class="lc">{</span></div>
+          <div class="code-line"><span class="ln">2</span><span class="lc">  <span class="pl-ent">"entries"</span>: {</span></div>
+          <div class="code-line"><span class="ln">3</span><span class="lc">    <span class="pl-ent">"app-keys.conf"</span>: {</span></div>
+          <div class="code-line"><span class="ln">4</span><span class="lc">      <span class="pl-ent">"path"</span>: {</span></div>
+          <div class="code-line"><span class="ln">5</span><span class="lc">        <span class="pl-ent">"default"</span>: <span class="pl-s">"~/.config/example/"</span>,</span></div>
+          <div class="code-line"><span class="ln">6</span><span class="lc">        <span class="pl-ent">"macos"</span>: <span class="callout-anchor"><span class="pl-s">"~/Library/Application Support/Example/"</span><span class="callout right hint"><span class="hint-title">Or: single path — copies the command directly</span><code class="hint-code">"path": "~/.config/example/app-keys.conf"</code></span></span></span></div>
+          <div class="code-line"><span class="ln">7</span><span class="lc">      }</span></div>
+          <div class="code-line"><span class="ln">8</span><span class="lc">    }</span></div>
+          <div class="code-line"><span class="ln">9</span><span class="lc">  }</span></div>
+          <div class="code-line"><span class="ln">10</span><span class="lc">}</span></div>
+        </div>
+      </div>
+
+      <div class="file">
+        <div class="file-header">
+          <span class="file-icon"><gh-icon name="code"></gh-icon></span>
+          <span class="file-name">app-keys.conf</span>
+          <span class="gdc-pop-anchor">
+            <button class="gdc-btn" type="button">gh</button>
+            <ul class="gdc-popover" role="menu">
+              <li class="gdc-item gdc-current" role="none">
+                <span class="gdc-key">default</span>
+                <span class="gdc-path">~/.config/example/app-keys.conf</span>
+                <span class="callout-anchor">
+                  <button class="gdc-copy gdc-copied" type="button" aria-label="Copied"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></button>
+                  <span class="callout right">Copied</span>
+                </span>
+              </li>
+              <li class="gdc-item" role="none">
+                <span class="gdc-key">macos</span>
+                <span class="gdc-path">~/Library/Application Support/Example/app-keys.conf</span>
+                <button class="gdc-copy" type="button" aria-label="Copy command for macos"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></button>
+              </li>
+            </ul>
+          </span>
+          <button class="gdc-btn" type="button">curl</button>
+          <div class="file-actions"><span class="btn">Raw</span></div>
+        </div>
+        <div class="code">
+          <div class="code-line"><span class="ln">1</span><span class="lc"><span class="pl-c1">[api]</span></span></div>
+          <div class="code-line"><span class="ln">2</span><span class="lc">endpoint = <span class="pl-s">https://api.example.com</span></span></div>
+          <div class="code-line"><span class="ln">3</span><span class="lc">retries = <span class="pl-c1">3</span></span></div>
+          <div class="code-line"><span class="ln">4</span><span class="lc">timeout = <span class="pl-c1">30</span></span></div>
+        </div>
+      </div>
+    </div>
+  </browser-window>
+</body>
+</html>
