@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Copy it 测试页</title>
+  <!--
+    用法：用浏览器直接打开本文件（file://），不需要安装到 Tampermonkey。
+    页面先引入仓库公共的 Tampermonkey API 替身 ../../test/gm-mock.js，再以普通脚本引入 ../copy-it.user.js。
+    「自动测试」用合成事件逐项断言；「手动测试」区用真实键盘和鼠标操作，结果显示在复制记录里。
+  -->
+  <style>
+    :root { color-scheme: light dark; }
+    body { margin: 0 auto; max-width: 960px; padding: 24px 16px; font: 14px/1.6 system-ui, sans-serif; }
+    h1 { font-size: 20px; }
+    h2 { margin-top: 32px; font-size: 16px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 4px 8px; border-bottom: 1px solid #8884; text-align: left; vertical-align: top; }
+    td code { word-break: break-all; }
+    .pass { color: #1a7f37; }
+    .fail { color: #cf222e; font-weight: 600; }
+    .samples { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+    .sample { padding: 8px 12px; border: 1px dashed #8888; border-radius: 6px; }
+    .sample > small { display: block; opacity: 0.6; }
+    #log { min-height: 80px; max-height: 240px; overflow: auto; padding: 8px; border-radius: 6px; background: #8881; font: 12px/1.5 ui-monospace, monospace; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Copy it 测试页</h1>
+
+  <h2>自动测试</h2>
+  <p><button id="run" type="button">运行自动测试</button> <span id="summary"></span></p>
+  <table>
+    <thead><tr><th>场景</th><th>期望</th><th>实际</th><th>结果</th></tr></thead>
+    <tbody id="results"></tbody>
+  </table>
+
+  <h2>手动测试</h2>
+  <p>用真实键盘按住修饰键点击下列元素，复制结果追加到下方记录。右 Alt 与 AltGr 布局只能在这里验证。</p>
+  <div class="samples">
+    <div class="sample"><small>链接（页面自身的点击处理应被拦下）</small><a id="link" href="https://example.com/" title="Link Title"><span id="span">getHTTPResponse value</span></a></div>
+    <div class="sample"><small>拆词</small><span id="words-1">XMLHttpRequest</span></div>
+    <div class="sample"><small>拆词</small><span id="words-2">user_name-Value</span></div>
+    <div class="sample"><small>拆词</small><span id="words-3">HTML5 parser utf8Encode</span></div>
+    <div class="sample"><small>变音符号与撇号</small><span id="words-4">Café crème don't</span></div>
+    <div class="sample"><small>无大小写文字</small><span id="words-5">用户 名称</span></div>
+    <div class="sample"><small>多行文字</small><div id="multiline">  hello   World<br>foo </div></div>
+    <div class="sample"><small>输入框</small><input id="inp" value="  hello world "></div>
+    <div class="sample"><small>空输入框（取占位提示）</small><input id="ph" placeholder="Search here"></div>
+    <div class="sample"><small>密码框（不复制明文）</small><input id="pw" type="password" value="secret" placeholder="Password"></div>
+    <div class="sample"><small>多行输入框</small><textarea id="ta">line one
+line two</textarea></div>
+    <div class="sample"><small>复选框（取 label）</small><label><input id="cb" type="checkbox"> Remember me</label></div>
+    <div class="sample"><small>下拉框</small><select id="sel"><option>One</option><option selected>Two Options</option></select></div>
+    <div class="sample"><small>多选下拉框</small><select id="msel" multiple size="3"><option selected>Alpha</option><option>Beta</option><option selected>Gamma</option></select></div>
+    <div class="sample"><small>图标按钮（取 aria-label）</small><button id="icon" type="button" aria-label="Close dialog"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="2"/></svg></button></div>
+    <div class="sample"><small>图片（取 alt）</small><img id="img" alt="Company logo" width="32" height="32" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Crect width='32' height='32' fill='%23888'/%3E%3C/svg%3E"></div>
+    <div class="sample"><small>SVG 文字（tspan 以空格连接）</small><svg width="200" height="40"><text id="svgt" x="0" y="16" fill="currentColor"><tspan id="ts">First</tspan><tspan x="0" dy="18">Second</tspan></text></svg></div>
+    <div class="sample"><small>title 写在外层元素</small><div title="Outer Title"><span id="titled">hover me</span></div></div>
+    <div class="sample"><small>Shadow DOM</small><div id="host"></div></div>
+    <div class="sample"><small>没有任何文字</small><div id="empty" style="height: 20px; background: #8882"></div></div>
+  </div>
+
+  <h2>复制记录</h2>
+  <div id="log"></div>
+
+  <script src="../../test/gm-mock.js" data-name="Copy it 🚀 (test page)"></script>
+  <script>
+    window.__pageHandlers = [];
+    GM_mock.addEventListener('call', ({ detail }) => {
+      if (detail.name !== 'GM_setClipboard') return;
+      const log = document.getElementById('log');
+      log.textContent += `${new Date().toLocaleTimeString()}  ${JSON.stringify(detail.args[0])}\n`;
+      log.scrollTop = log.scrollHeight;
+    });
+
+    document.getElementById('host').attachShadow({ mode: 'open' }).innerHTML = '<b id="inner">Shadow Text</b>';
+    for (const type of ['pointerdown', 'mousedown', 'mouseup', 'click']) {
+      document.getElementById('link').addEventListener(type, () => window.__pageHandlers.push(type));
+    }
+    // 链接本身不跳转，避免普通点击离开测试页
+    document.getElementById('link').addEventListener('click', (event) => event.preventDefault());
+  </script>
+  <script src="../copy-it.user.js"></script>
+  <script>
+    // ---------- 自动测试 ----------
+    const $ = (id) => document.getElementById(id);
+    const IS_MAC = /mac/i.test(navigator.userAgentData?.platform ?? navigator.platform);
+    const MOD = IS_MAC ? { metaKey: true } : { ctrlKey: true };
+    const ALT = { altKey: true };
+    const RIGHT_ALT = 'rightAlt';
+
+    // 依次派发一次完整点击的事件链，返回这次复制的内容；没有复制时返回 undefined
+    function altClick(el, opts = {}) {
+      const { [RIGHT_ALT]: rightAlt, ...init } = opts;
+      if (rightAlt) window.dispatchEvent(new KeyboardEvent('keydown', { key: 'AltGraph', code: 'AltRight', location: 2 }));
+      GM_mock.reset();
+      for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) {
+        const Ctor = type.startsWith('pointer') ? PointerEvent : MouseEvent;
+        el.dispatchEvent(new Ctor(type, { bubbles: true, composed: true, cancelable: true, button: 0, clientX: 200, clientY: 200, ...init }));
+      }
+      if (rightAlt) window.dispatchEvent(new KeyboardEvent('keyup', { key: 'AltGraph', code: 'AltRight', location: 2 }));
+      return GM_mock.lastCopied;
+    }
+
+    const span = () => $('span');
+    const cases = [
+      ['Alt：原文', () => altClick(span(), ALT), 'getHTTPResponse value'],
+      ['Alt：页面自身的点击处理被拦下', () => (window.__pageHandlers.length = 0, altClick(span(), ALT), window.__pageHandlers.join(',')), ''],
+      ['普通点击：不复制、不拦截', () => (window.__pageHandlers.length = 0, [altClick(span()), window.__pageHandlers.join(',')].join('|')), '|pointerdown,mousedown,mouseup,click'],
+      ['非左键：不复制', () => altClick(span(), { ...ALT, button: 2 }), undefined],
+      ['Alt+Shift：kebab-case', () => altClick(span(), { ...ALT, shiftKey: true }), 'get-http-response-value'],
+      ['Alt+Ctrl/Command：snake_case', () => altClick(span(), { ...ALT, ...MOD }), 'get_http_response_value'],
+      ['右 Alt：camelCase', () => altClick(span(), { [RIGHT_ALT]: true }), 'getHttpResponseValue'],
+      ['右 Alt+Shift：PascalCase', () => altClick(span(), { [RIGHT_ALT]: true, shiftKey: true }), 'GetHttpResponseValue'],
+      ['右 Alt 作 AltGr（altKey 为 false，带 Ctrl）：仍是 camelCase', () => altClick(span(), { [RIGHT_ALT]: true, ctrlKey: true }), 'getHttpResponseValue'],
+      ['右 Alt 松开后：Ctrl 点击不复制', () => altClick(span(), { ctrlKey: true }), undefined],
+      ['Alt+Shift+Ctrl/Command：title', () => altClick(span(), { ...ALT, shiftKey: true, ...MOD }), 'Link Title'],
+      ['title 写在外层元素', () => altClick($('titled'), { ...ALT, shiftKey: true, ...MOD }), 'Outer Title'],
+      ['拆词：连续大写', () => altClick($('words-1'), { ...ALT, shiftKey: true }), 'xml-http-request'],
+      ['拆词：已有分隔符', () => altClick($('words-2'), { [RIGHT_ALT]: true, shiftKey: true }), 'UserNameValue'],
+      ['拆词：数字跟随前一个词', () => altClick($('words-3'), { ...ALT, ...MOD }), 'html5_parser_utf8_encode'],
+      ['拆词：变音符号与撇号', () => altClick($('words-4'), { ...ALT, shiftKey: true }), 'cafe-creme-dont'],
+      ['拆词：无大小写文字', () => altClick($('words-5'), { ...ALT, shiftKey: true }), '用户-名称'],
+      ['多行文字：原文保留换行，空白按页面显示折叠', () => altClick($('multiline'), ALT), 'hello World\nfoo'],
+      ['多行文字：转换时换行是分隔', () => altClick($('multiline'), { [RIGHT_ALT]: true }), 'helloWorldFoo'],
+      ['输入框：取值并去掉首尾空白', () => altClick($('inp'), ALT), 'hello world'],
+      ['空输入框：取占位提示', () => altClick($('ph'), ALT), 'Search here'],
+      ['密码框：只取占位提示', () => altClick($('pw'), ALT), 'Password'],
+      ['多行输入框', () => altClick($('ta'), ALT), 'line one\nline two'],
+      ['复选框：取 label', () => altClick($('cb'), ALT), 'Remember me'],
+      ['下拉框：选中项', () => altClick($('sel'), ALT), 'Two Options'],
+      ['多选下拉框：选中项逐行', () => altClick($('msel'), ALT), 'Alpha\nGamma'],
+      ['图标按钮', () => altClick($('icon'), ALT), 'Close dialog'],
+      ['图标按钮里的 SVG：向上取 aria-label', () => altClick($('icon').querySelector('path'), ALT), 'Close dialog'],
+      ['图片：取 alt', () => altClick($('img'), ALT), 'Company logo'],
+      ['SVG tspan：以空格连接', () => altClick($('ts'), ALT), 'First Second'],
+      ['Shadow DOM', () => altClick($('host').shadowRoot.getElementById('inner'), ALT), 'Shadow Text'],
+      ['没有文字：不复制', () => altClick($('empty'), ALT), undefined],
+      ['提示：外层元素与类名带前缀', () => {
+        altClick(span(), ALT);
+        const box = document.querySelector('user-script-copy-it-toast')?.shadowRoot.querySelector('.user-script-copy-it-box');
+        return [box?.classList.contains('user-script-copy-it-show'), box?.dataset.userScriptCopyItOk, !!box?.querySelector('.user-script-copy-it-icon svg')].join('|');
+      }, 'true|true|true'],
+      ['提示：没有内容时显示失败状态', () => {
+        altClick($('empty'), ALT);
+        return document.querySelector('user-script-copy-it-toast').shadowRoot.querySelector('.user-script-copy-it-box').dataset.userScriptCopyItOk;
+      }, 'false'],
+    ];
+
+    function show(value) {
+      return value === undefined ? '（未复制）' : JSON.stringify(value);
+    }
+
+    $('run').addEventListener('click', () => {
+      const tbody = $('results');
+      tbody.textContent = '';
+      let failed = 0;
+      for (const [name, run, expected] of cases) {
+        let actual;
+        try {
+          actual = run();
+        } catch (err) {
+          actual = `Error: ${err.message}`;
+        }
+        const ok = actual === expected;
+        if (!ok) failed += 1;
+        const row = tbody.insertRow();
+        row.insertCell().textContent = name;
+        row.insertCell().innerHTML = `<code></code>`;
+        row.cells[1].firstChild.textContent = show(expected);
+        row.insertCell().innerHTML = `<code></code>`;
+        row.cells[2].firstChild.textContent = show(actual);
+        const result = row.insertCell();
+        result.textContent = ok ? '通过' : '失败';
+        result.className = ok ? 'pass' : 'fail';
+      }
+      $('summary').textContent = failed ? `${failed} 项失败，共 ${cases.length} 项` : `全部通过，共 ${cases.length} 项`;
+      $('summary').className = failed ? 'fail' : 'pass';
+    });
+  </script>
+</body>
+</html>
