@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>允许复制 测试页</title>
+  <!--
+    用法：用浏览器直接打开本文件（file://），不需要安装到 Tampermonkey。
+    页面先引入仓库公共的 Tampermonkey API 替身 ../../test/gm-mock.js，再引入脚本本体，最后才注册页面自己的限制，模拟真实网站的加载顺序。
+    「模拟限制」区域用了网站常见的几种手段：user-select: none、透明的选中高亮、拦截 selectstart / copy / contextmenu / 快捷键、复制时追加版权声明。
+    file:// 页面不在内置网站之列，测试通过替身执行菜单命令来开关；也可以手动点击「切换开关」后亲自拖选、复制。
+  -->
+  <style>
+    :root { color-scheme: light dark; }
+    body { margin: 0 auto; max-width: 960px; padding: 24px 16px; font: 14px/1.6 system-ui, sans-serif; }
+    h1 { font-size: 20px; }
+    h2 { margin-top: 32px; font-size: 16px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 4px 8px; border-bottom: 1px solid #8884; text-align: left; vertical-align: top; }
+    .pass { color: #1a7f37; }
+    .fail { color: #cf222e; font-weight: 600; }
+    .sample { padding: 8px 12px; border: 1px dashed #8888; border-radius: 6px; }
+    /* 模拟限制：禁止选择，选中高亮设为透明 */
+    #article { -webkit-user-select: none; user-select: none; }
+    #article::selection, #article *::selection { background: transparent; }
+  </style>
+</head>
+<body>
+  <h1>允许复制 测试页</h1>
+
+  <h2>自动测试</h2>
+  <p><button id="run" type="button">运行自动测试</button> <span id="summary"></span></p>
+  <table>
+    <thead><tr><th>场景</th><th>期望</th><th>实际</th><th>结果</th></tr></thead>
+    <tbody id="results"></tbody>
+  </table>
+
+  <h2>模拟限制</h2>
+  <p>
+    <button id="toggle" type="button">切换开关</button>
+    当前状态：<span id="state"></span>。开启后，下面这段文字应当可以拖选、右键复制，粘贴出来不带「版权所有」。
+  </p>
+  <div class="sample">
+    <article id="article" onselectstart="return false">
+      <p id="para">Sample paragraph that the page tries to protect from selection and copying.</p>
+    </article>
+  </div>
+  <p>复制下来的内容粘贴到这里：</p>
+  <textarea id="paste" rows="3" style="width: 100%"></textarea>
+
+  <script src="../../test/gm-mock.js" data-name="Copy Anyway (test page)"></script>
+  <script src="../copy-anyway.user.js"></script>
+  <script>
+    // ---------- 页面自己的限制，注册在脚本之后 ----------
+    const pageCalls = [];
+    document.addEventListener('selectstart', (event) => { pageCalls.push('selectstart'); event.preventDefault(); });
+    document.addEventListener('contextmenu', (event) => { pageCalls.push('contextmenu'); event.preventDefault(); });
+    document.addEventListener('keydown', (event) => {
+      if ((event.ctrlKey || event.metaKey) && ['KeyA', 'KeyC', 'KeyX', 'KeyV'].includes(event.code)) {
+        pageCalls.push(`keydown:${event.code}`);
+        event.preventDefault();
+      }
+    });
+    // 复制时改写剪贴板：追加版权声明
+    document.oncopy = (event) => {
+      pageCalls.push('copy');
+      event.clipboardData.setData('text/plain', `${getSelection()}\n\n版权所有，转载请注明出处。`);
+      event.preventDefault();
+    };
+    window.addEventListener('cut', (event) => { pageCalls.push('cut'); event.preventDefault(); });
+  </script>
+  <script>
+    // ---------- 自动测试 ----------
+    const $ = (id) => document.getElementById(id);
+    const enabled = () => GM_mock.menu.size > 0 && [...GM_mock.menu.values()][0].name.match(/停用|Disable/) !== null;
+    // 替身的存储变化监听是同步触发的，样式在下一次页面变化时补挂，这里稍等片刻
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 200));
+
+    function toggle() {
+      const [command] = GM_mock.menu.values();
+      GM_mock.runMenuCommand(command.name);
+    }
+
+    // 派发事件，返回 [页面监听器是否收到, 默认行为是否被阻止]
+    function fire(event, target = $('para')) {
+      pageCalls.length = 0;
+      target.dispatchEvent(event);
+      return [pageCalls.length > 0, event.defaultPrevented].join('|');
+    }
+    const selectstart = () => new Event('selectstart', { bubbles: true, cancelable: true });
+    const copy = () => new ClipboardEvent('copy', { bubbles: true, cancelable: true, clipboardData: new DataTransfer() });
+    const cut = () => new ClipboardEvent('cut', { bubbles: true, cancelable: true, clipboardData: new DataTransfer() });
+    const contextmenu = () => new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    const key = (code) => new KeyboardEvent('keydown', { bubbles: true, cancelable: true, code, ctrlKey: true });
+
+    function showState() {
+      $('state').textContent = enabled() ? '已开启' : '未开启';
+    }
+    $('toggle').addEventListener('click', async () => { toggle(); await settle(); showState(); });
+    showState();
+
+    const cases = [
+      ['首次运行写入空的自定义范围', async () => JSON.stringify(GM_mock.values.get('sites')), '[]'],
+      ['未开启：菜单显示「启用」', async () => enabled(), false],
+      ['未开启：页面的禁止选择仍然有效', async () => getComputedStyle($('para')).userSelect, 'none'],
+      ['未开启：页面能拦截 selectstart', async () => fire(selectstart()), 'true|true'],
+      ['未开启：页面能改写复制内容', async () => fire(copy()), 'true|true'],
+      ['执行菜单「启用」后开启', async () => { toggle(); await settle(); return enabled(); }, true],
+      ['开启后记下当前域名', async () => JSON.stringify(GM_mock.values.get('sites')), JSON.stringify([location.hostname])],
+      ['恢复选择：user-select 为 text', async () => getComputedStyle($('para')).userSelect, 'text'],
+      ['样式只挂一个，类名带前缀', async () => document.querySelectorAll('style.user-script-copy-anyway-style').length, 1],
+      ['selectstart：页面收不到，默认行为不被阻止', async () => fire(selectstart()), 'false|false'],
+      ['行内 onselectstart 同样失效', async () => fire(selectstart(), $('article')), 'false|false'],
+      ['copy：页面收不到，不会追加版权声明', async () => fire(copy()), 'false|false'],
+      ['cut：页面收不到', async () => fire(cut()), 'false|false'],
+      ['contextmenu：页面收不到，右键菜单照常弹出', async () => fire(contextmenu()), 'false|false'],
+      ['Ctrl+C / A / X：页面收不到', async () => ['KeyC', 'KeyA', 'KeyX'].map((code) => fire(key(code))).join(','), 'false|false,false|false,false|false'],
+      ['Ctrl+V 等其他快捷键不受影响', async () => fire(key('KeyV')), 'true|true'],
+      ['执行菜单「停用」后恢复页面原样', async () => {
+        toggle();
+        await settle();
+        return [enabled(), getComputedStyle($('para')).userSelect, fire(copy())].join(',');
+      }, 'false,none,true|true'],
+      ['停用后去掉自定义范围', async () => JSON.stringify(GM_mock.values.get('sites')), '[]'],
+      ['路径范围同样生效，停用时一并去掉', async () => {
+        const dir = location.pathname.slice(0, location.pathname.lastIndexOf('/'));
+        GM_setValue('sites', [dir, 'example.com']);
+        await settle();
+        const on = [enabled(), getComputedStyle($('para')).userSelect].join(',');
+        toggle();
+        await settle();
+        return `${on} → ${JSON.stringify(GM_mock.values.get('sites'))}`;
+      }, 'true,text → ["example.com"]'],
+    ];
+
+    $('run').addEventListener('click', async () => {
+      await settle();
+      const tbody = $('results');
+      tbody.textContent = '';
+      let failed = 0;
+      for (const [name, run, expected] of cases) {
+        let actual;
+        try {
+          actual = await run();
+        } catch (err) {
+          actual = `Error: ${err.message}`;
+        }
+        const ok = actual === expected;
+        if (!ok) failed += 1;
+        const row = tbody.insertRow();
+        row.insertCell().textContent = name;
+        row.insertCell().textContent = JSON.stringify(expected);
+        row.insertCell().textContent = JSON.stringify(actual);
+        const result = row.insertCell();
+        result.textContent = ok ? '通过' : '失败';
+        result.className = ok ? 'pass' : 'fail';
+      }
+      showState();
+      const summary = $('summary');
+      summary.textContent = failed ? `${failed} 项失败，共 ${cases.length} 项` : `全部通过，共 ${cases.length} 项`;
+      summary.className = failed ? 'fail' : 'pass';
+    });
+  </script>
+</body>
+</html>
