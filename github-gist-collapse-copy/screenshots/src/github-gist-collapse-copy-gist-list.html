@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<!--
+  Scene: Gist list with "GitHub & Gist: Collapse & Copy" active (github-gist-collapse-copy.user.js).
+  Mirrors the script's current list behavior on the owner's own page (gist.github.com/octocat):
+    - code previews hidden; a divider between items
+    - the description replaces the file name as the title (GitHub's own link style)
+    - the "octocat /" prefix and the separate description line are hidden
+    - a faded copy icon copies the Gist ID; it sits after the Secret label when the item has one
+  Render from the project root:
+    ~/.agents/skills/extension-screenshots/scripts/render.sh github-gist-collapse-copy/screenshots/src/github-gist-collapse-copy-gist-list.html \
+      github-gist-collapse-copy/screenshots/github-gist-collapse-copy-gist-list-1280x800.png
+-->
+<link rel="stylesheet" href="_partials/browser.css">
+<script defer src="_partials/browser.js"></script>
+<style>
+  .gist-page { width: 860px; margin: 0 auto; padding: 20px 0; }
+  .profile { display: flex; align-items: center; justify-content: space-between; padding-bottom: 14px; border-bottom: 1px solid #d1d9e0; }
+  .who { display: flex; align-items: center; gap: 12px; }
+  .avatar { border-radius: 50%; background: #24292f; color: #ffffff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .avatar.lg { width: 36px; height: 36px; }
+  .avatar.lg svg { width: 22px; height: 22px; }
+  .avatar.sm { width: 24px; height: 24px; margin-top: 1px; }
+  .avatar.sm svg { width: 15px; height: 15px; }
+  .who b { display: block; font-size: 16px; }
+  .who span { font-size: 12px; color: #59636e; }
+  .filters { display: flex; gap: 6px; font-size: 12px; }
+  .filters span { padding: 4px 12px; border-radius: 14px; color: #59636e; }
+  .filters .on { background: #eef1f4; color: #1f2328; font-weight: 600; }
+  .filters em { font-style: normal; font-weight: 400; color: #59636e; margin-left: 4px; }
+
+  .snippet { display: flex; align-items: flex-start; gap: 12px; padding: 14px 0; }
+  .snippet + .snippet { border-top: 1px solid #d1d9e0b3; }
+  .info { flex: 1; min-width: 0; }
+  .title-row { display: flex; align-items: center; }
+  .title { font-size: 14px; font-weight: 600; color: #0969da; }
+  .meta { font-size: 12px; color: #59636e; margin-top: 3px; }
+  .stats { display: flex; gap: 14px; font-size: 12px; color: #59636e; flex-shrink: 0; padding-top: 2px; }
+  .stats span { display: inline-flex; align-items: center; gap: 4px; }
+  .stats svg { width: 14px; height: 14px; }
+
+  /* The script's own buttons */
+  .ghc-btn { width: 28px; height: 28px; flex-shrink: 0; padding: 0; border: 0; border-radius: 6px; background: transparent; color: #59636e; display: inline-flex; align-items: center; justify-content: center; }
+  .ghc-btn .i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .ghc-btn.ghc-inline { width: 20px; height: 20px; margin-left: 4px; opacity: .5; }
+  .ghc-inline .i { width: 14px; height: 14px; }
+  .label { border: 1px solid #d1d9e0; border-radius: 12px; padding: 0 7px; margin-left: 6px; font-size: 12px; font-weight: 500; color: #59636e; line-height: 18px; }
+</style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute">
+    <defs>
+      <symbol id="mark" viewBox="0 0 16 16"><path fill="currentColor" d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></symbol>
+      <symbol id="files" viewBox="0 0 16 16"><path fill="currentColor" d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v12.5A1.75 1.75 0 0 1 14.25 16H1.75A1.75 1.75 0 0 1 0 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V1.75a.25.25 0 0 0-.25-.25Zm7.47 3.97a.75.75 0 0 1 1.06 0l2 2a.75.75 0 0 1 0 1.06l-2 2a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734L10.69 8 9.22 6.53a.75.75 0 0 1 0-1.06ZM6.78 6.53 5.31 8l1.47 1.47a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215l-2-2a.75.75 0 0 1 0-1.06l2-2a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042Z"/></symbol>
+      <symbol id="fork" viewBox="0 0 16 16"><path fill="currentColor" d="M5 5.372v.878c0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75v-.878a2.25 2.25 0 1 1 1.5 0v.878a2.25 2.25 0 0 1-2.25 2.25h-1.5v2.128a2.251 2.251 0 1 1-1.5 0V8.5h-1.5A2.25 2.25 0 0 1 3.5 6.25v-.878a2.25 2.25 0 1 1 1.5 0ZM5 3.25a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Zm6.75.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm-3 8.75a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z"/></symbol>
+      <symbol id="comment" viewBox="0 0 16 16"><path fill="currentColor" d="M1 2.75C1 1.784 1.784 1 2.75 1h10.5c.966 0 1.75.784 1.75 1.75v7.5A1.75 1.75 0 0 1 13.25 12H9.06l-2.573 2.573A1.458 1.458 0 0 1 4 13.543V12H2.75A1.75 1.75 0 0 1 1 10.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h4.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"/></symbol>
+      <symbol id="star" viewBox="0 0 16 16"><path fill="currentColor" d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Zm0 2.445L6.615 5.5a.75.75 0 0 1-.564.41l-3.097.45 2.24 2.184a.75.75 0 0 1 .216.664l-.528 3.084 2.769-1.456a.75.75 0 0 1 .698 0l2.77 1.456-.53-3.084a.75.75 0 0 1 .216-.664l2.24-2.183-3.096-.45a.75.75 0 0 1-.564-.41L8 2.694Z"/></symbol>
+      <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+    </defs>
+  </svg>
+
+  <browser-window favicon="github" toolbar="tampermonkey"
+    tab-title="octocat’s gists"
+    url="gist.github.com/octocat">
+    <div class="gist-page">
+      <div class="profile">
+        <div class="who">
+          <span class="avatar lg"><svg><use href="#mark"/></svg></span>
+          <div><b>The Octocat</b><span>@octocat</span></div>
+        </div>
+        <div class="filters"><span class="on">All gists<em>8</em></span><span>Starred<em>3</em></span></div>
+      </div>
+
+      <div class="snippet">
+        <span class="avatar sm"><svg><use href="#mark"/></svg></span>
+        <div class="info">
+          <div class="title-row"><span class="title">Sample Hello World snippet with helper scripts</span><button class="ghc-btn ghc-inline" aria-label="Copy Gist ID"><svg class="i"><use href="#i-copy"/></svg></button></div>
+          <div class="meta">Last active 2 hours ago</div>
+        </div>
+        <div class="stats"><span><svg><use href="#files"/></svg>3 files</span><span><svg><use href="#fork"/></svg>42 forks</span><span><svg><use href="#comment"/></svg>6 comments</span><span><svg><use href="#star"/></svg>128 stars</span></div>
+      </div>
+      <div class="snippet">
+        <span class="avatar sm"><svg><use href="#mark"/></svg></span>
+        <div class="info">
+          <div class="title-row"><span class="title">Shell functions for common Git rebasing</span><button class="ghc-btn ghc-inline" aria-label="Copy Gist ID"><svg class="i"><use href="#i-copy"/></svg></button></div>
+          <div class="meta">Last active yesterday</div>
+        </div>
+        <div class="stats"><span><svg><use href="#files"/></svg>1 file</span><span><svg><use href="#fork"/></svg>18 forks</span><span><svg><use href="#comment"/></svg>2 comments</span><span><svg><use href="#star"/></svg>95 stars</span></div>
+      </div>
+      <div class="snippet">
+        <span class="avatar sm"><svg><use href="#mark"/></svg></span>
+        <div class="info">
+          <div class="title-row">
+            <span class="title">Local dev environment with PostgreSQL and Redis</span>
+            <span class="label">Secret</span>
+            <span class="callout-anchor">
+              <button class="ghc-btn ghc-inline" aria-label="Copy Gist ID"><svg class="i"><use href="#i-copy"/></svg></button>
+              <span class="callout right">Copy Gist ID</span>
+            </span>
+          </div>
+          <div class="meta">Last active 3 days ago</div>
+        </div>
+        <div class="stats"><span><svg><use href="#files"/></svg>2 files</span><span><svg><use href="#fork"/></svg>8 forks</span><span><svg><use href="#comment"/></svg>1 comment</span><span><svg><use href="#star"/></svg>64 stars</span></div>
+      </div>
+      <div class="snippet">
+        <span class="avatar sm"><svg><use href="#mark"/></svg></span>
+        <div class="info">
+          <div class="title-row">
+            <span class="callout-anchor">
+              <span class="title">Reverse proxy config with HTTP/2</span>
+              <button class="ghc-btn ghc-inline" aria-label="Copy Gist ID"><svg class="i"><use href="#i-copy"/></svg></button>
+              <span class="callout right">Description as the title · opens in a new tab</span>
+            </span>
+          </div>
+          <div class="meta">Last active last week</div>
+        </div>
+        <div class="stats"><span><svg><use href="#files"/></svg>1 file</span><span><svg><use href="#fork"/></svg>12 forks</span><span><svg><use href="#comment"/></svg>0 comments</span><span><svg><use href="#star"/></svg>51 stars</span></div>
+      </div>
+      <div class="snippet">
+        <span class="avatar sm"><svg><use href="#mark"/></svg></span>
+        <div class="info">
+          <div class="title-row"><span class="title">GitHub Actions CI matrix template</span><button class="ghc-btn ghc-inline" aria-label="Copy Gist ID"><svg class="i"><use href="#i-copy"/></svg></button></div>
+          <div class="meta">Last active 2 weeks ago</div>
+        </div>
+        <div class="stats"><span><svg><use href="#files"/></svg>1 file</span><span><svg><use href="#fork"/></svg>25 forks</span><span><svg><use href="#comment"/></svg>4 comments</span><span><svg><use href="#star"/></svg>112 stars</span></div>
+      </div>
+      <div class="snippet">
+        <span class="avatar sm"><svg><use href="#mark"/></svg></span>
+        <div class="info">
+          <div class="title-row"><span class="title">Editor keybindings for macOS</span><button class="ghc-btn ghc-inline" aria-label="Copy Gist ID"><svg class="i"><use href="#i-copy"/></svg></button></div>
+          <div class="meta">Last active last month</div>
+        </div>
+        <div class="stats"><span><svg><use href="#files"/></svg>1 file</span><span><svg><use href="#fork"/></svg>7 forks</span><span><svg><use href="#comment"/></svg>0 comments</span><span><svg><use href="#star"/></svg>39 stars</span></div>
+      </div>
+    </div>
+  </browser-window>
+</body>
+</html>

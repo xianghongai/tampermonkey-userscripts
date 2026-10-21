@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<!--
+  Scene: a Gist page with "GitHub & Gist: Collapse & Copy" active
+  (github-gist-collapse-copy.user.js). Mirrors the script's current behaviour:
+    - each file collapses on its own (chevron); the double-chevron at the start of the
+      description row collapses or expands every file at once
+    - a faded copy icon next to each file name copies the file name
+    - a copy icon before Raw copies the raw content; it shows a check once copied
+    - a faded copy icon at the end of the description copies the Gist ID
+  Nothing sits in the page head actions: the Gist ID icon moved to the description row.
+  Render from the project root:
+    ~/.agents/skills/extension-screenshots/scripts/render.sh github-gist-collapse-copy/screenshots/src/github-gist-collapse-copy-gist-detail.html \
+      github-gist-collapse-copy/screenshots/github-gist-collapse-copy-gist-detail-1280x800.png
+-->
+<link rel="stylesheet" href="_partials/browser.css">
+<link rel="stylesheet" href="_partials/github.css">
+<script defer src="_partials/browser.js"></script>
+<script defer src="_partials/github.js"></script>
+<style>
+  .gist-page { width: 880px; margin: 0 auto; padding: 16px 0 0; }
+
+  .pagehead { display: flex; align-items: center; justify-content: space-between; padding-bottom: 14px; border-bottom: 1px solid #d1d9e0; }
+  .head-name { display: flex; align-items: center; gap: 6px; font-size: 18px; }
+  .head-name .owner { color: #0969da; text-decoration: none; }
+  .head-name .slash { color: #59636e; }
+  .head-name .repo { font-weight: 600; }
+  .visibility { border: 1px solid #d1d9e0; border-radius: 12px; padding: 1px 8px; font-size: 11px; color: #59636e; font-weight: 500; margin-left: 4px; }
+  .head-actions { display: flex; align-items: center; gap: 8px; }
+
+  .btn { height: 28px; padding: 0 12px; border: 1px solid #d1d9e0; border-radius: 6px; background: #ffffff; font-size: 12px; font-weight: 500; color: #24292f; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; white-space: nowrap; }
+  .btn.sm { height: 24px; padding: 0 10px; font-size: 11px; }
+  .btn gh-icon svg { width: 14px; height: 14px; color: #59636e; }
+
+  /* Description row: the collapse-all button pulls 6px left so its icon lines up with the file
+     headers; the script makes the same adjustment with a negative margin. */
+  .about { display: flex; align-items: center; gap: 4px; margin: 12px 0 0 -6px; font-size: 14px; color: #59636e; }
+
+  .file { border: 1px solid #d1d9e0; border-radius: 6px; }
+  .file + .file { margin-top: 16px; }
+  .file-header { display: flex; align-items: center; gap: 6px; padding: 8px 16px; min-height: 36px; }
+  .file-name { font-size: 14px; font-weight: 600; color: #1f2328; text-decoration: none; }
+  .file-meta { font-size: 12px; color: #59636e; }
+  .file-actions { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+
+  /* The script's own buttons */
+  .ghc-btn { width: 28px; height: 28px; flex-shrink: 0; padding: 0; border: 0; border-radius: 6px; background: transparent; color: #59636e; display: inline-flex; align-items: center; justify-content: center; }
+  .ghc-btn .i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .ghc-btn.ghc-inline { width: 20px; height: 20px; margin-left: 4px; opacity: .5; }
+  .ghc-inline .i { width: 14px; height: 14px; }
+  .ghc-copy-done { color: #1a7f37; }
+
+  .code { border-top: 1px solid #d1d9e0; padding: 8px 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; line-height: 20px; }
+  .code-line { display: flex; }
+  .ln { width: 46px; flex-shrink: 0; padding-right: 12px; text-align: right; color: #59636e; }
+  .lc { white-space: pre; }
+</style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <defs>
+      <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+      <symbol id="i-files" viewBox="0 0 24 24"><path d="M20 7h-3a2 2 0 0 1-2-2V2"/><path d="M9 18a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h7l4 4v10a2 2 0 0 1-2 2Z"/><path d="M3 7.6v12.8A1.6 1.6 0 0 0 4.6 22h9.8"/></symbol>
+      <symbol id="i-chevrons-down-up" viewBox="0 0 24 24"><path d="m7 20 5-5 5 5"/><path d="m7 4 5 5 5-5"/></symbol>
+      <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+      <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    </defs>
+  </svg>
+
+  <browser-window favicon="github" toolbar="tampermonkey"
+    tab-title="octocat / hello-world.rb"
+    url="https://gist.github.com/octocat/6cad326836d38bd3a7ae">
+    <div class="gist-page">
+      <div class="pagehead">
+        <div class="head-name">
+          <a class="owner" href="#">octocat</a><span class="slash">/</span><span class="repo">hello-world.rb</span>
+          <span class="visibility">Public</span>
+        </div>
+        <div class="head-actions">
+          <span class="btn"><gh-icon name="star"></gh-icon>Star <b>128</b></span>
+          <span class="btn"><gh-icon name="fork"></gh-icon>Fork <b>42</b></span>
+        </div>
+      </div>
+
+      <div class="about">
+        <button class="ghc-btn" aria-label="Collapse all files"><svg class="i"><use href="#i-chevrons-down-up"/></svg></button>
+        <span>Sample Hello World snippet with configuration and helper scripts</span>
+        <span class="callout-anchor">
+          <button class="ghc-btn ghc-inline" aria-label="Copy Gist ID"><svg class="i"><use href="#i-copy"/></svg></button>
+          <span class="callout right">Copy Gist ID</span>
+        </span>
+      </div>
+
+      <div class="file">
+        <div class="file-header">
+          <button class="ghc-btn" aria-expanded="false" aria-label="Expand"><svg class="i"><use href="#i-chevron-right"/></svg></button>
+          <a class="file-name" href="#">config.json</a>
+          <span class="callout-anchor">
+            <button class="ghc-btn ghc-inline" aria-label="Copy file name"><svg class="i"><use href="#i-copy"/></svg></button>
+            <span class="callout right">Copy file name</span>
+          </span>
+          <span class="file-meta">24 lines · 680 B</span>
+          <div class="file-actions">
+            <span class="callout-anchor">
+              <button class="ghc-btn" aria-label="Copy raw content"><svg class="i"><use href="#i-files"/></svg></button>
+              <span class="callout left">Copy raw content</span>
+            </span>
+            <a class="btn sm" href="#">Raw</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="file">
+        <div class="file-header">
+          <button class="ghc-btn" aria-expanded="true" aria-label="Collapse"><svg class="i"><use href="#i-chevron-down"/></svg></button>
+          <a class="file-name" href="#">hello-world.rb</a>
+          <button class="ghc-btn ghc-inline" aria-label="Copy file name"><svg class="i"><use href="#i-copy"/></svg></button>
+          <span class="file-meta">10 lines · 320 B</span>
+          <div class="file-actions">
+            <span class="callout-anchor">
+              <button class="ghc-btn ghc-copy-done" aria-label="Copy raw content"><svg class="i"><use href="#i-check"/></svg></button>
+              <span class="callout left">Copied</span>
+            </span>
+            <a class="btn sm" href="#">Raw</a>
+          </div>
+        </div>
+        <div class="code">
+          <div class="code-line"><span class="ln">1</span><span class="lc"><span class="pl-c"># The Hello World script for octocat</span></span></div>
+          <div class="code-line"><span class="ln">2</span><span class="lc"><span class="pl-k">class</span> <span class="pl-en">HelloWorld</span></span></div>
+          <div class="code-line"><span class="ln">3</span><span class="lc">  <span class="pl-k">def</span> <span class="pl-en">initialize</span>(name = <span class="pl-s">"World"</span>)</span></div>
+          <div class="code-line"><span class="ln">4</span><span class="lc">    <span class="pl-v">@name</span> = name</span></div>
+          <div class="code-line"><span class="ln">5</span><span class="lc">  <span class="pl-k">end</span></span></div>
+          <div class="code-line"><span class="ln">6</span><span class="lc"></span></div>
+          <div class="code-line"><span class="ln">7</span><span class="lc">  <span class="pl-k">def</span> <span class="pl-en">say_hello</span></span></div>
+          <div class="code-line"><span class="ln">8</span><span class="lc">    <span class="pl-en">puts</span> <span class="pl-s">"Hello <span class="pl-v">#{@name}</span> from Octocat!"</span></span></div>
+          <div class="code-line"><span class="ln">9</span><span class="lc">  <span class="pl-k">end</span></span></div>
+          <div class="code-line"><span class="ln">10</span><span class="lc"><span class="pl-k">end</span></span></div>
+        </div>
+      </div>
+
+      <div class="file">
+        <div class="file-header">
+          <button class="ghc-btn" aria-expanded="false" aria-label="Expand"><svg class="i"><use href="#i-chevron-right"/></svg></button>
+          <a class="file-name" href="#">setup.sh</a>
+          <button class="ghc-btn ghc-inline" aria-label="Copy file name"><svg class="i"><use href="#i-copy"/></svg></button>
+          <span class="file-meta">18 lines · 480 B</span>
+          <div class="file-actions">
+            <button class="ghc-btn" aria-label="Copy raw content"><svg class="i"><use href="#i-files"/></svg></button>
+            <a class="btn sm" href="#">Raw</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </browser-window>
+</body>
+</html>

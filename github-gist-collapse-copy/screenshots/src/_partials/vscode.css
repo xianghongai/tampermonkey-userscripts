@@ -1,0 +1,95 @@
+/*
+  VS Code workbench (current dark theme) for <vscode-window>, rendered by vscode.js. Not a browser scene, so it
+  does not use browser.css. Scenes are responsive; for the canvas size see "Sizes and the canvas" in
+  scripts/render.sh.
+  Layout follows current VS Code: title bar, activity bar and status bar sit on the window background; the
+  side bar, the editor and the panel are separate rounded cards with a 4px gap between them.
+  Code token classes: kw (keyword), fn (function), str (string), var (variable), cm (comment).
+  Terminal classes: ok (prompt arrow), dir (prompt path).
+*/
+:root {
+  --vs-window: #191a1b;   /* title bar, activity bar, status bar, side bar and panel */
+  --vs-editor: #121314;   /* editor card */
+  --vs-border: #2a2b2c;   /* card outlines */
+  --vs-chip: #2c2d2e;     /* active panel tab, title search box */
+  --vs-key: #252627;      /* key caps */
+  --vs-text: #cccccc;
+  --vs-muted: #9d9d9d;
+  --vs-dim: #6e7681;
+  --vs-accent: #0078d4;
+  --vs-sash: #4d4e4e;     /* the three grip dots in a gap between cards */
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: var(--canvas-w, 100vw); height: var(--canvas-h, 100vh); overflow: hidden; }
+body {
+  background: var(--vs-window); color: var(--vs-text); font-size: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  display: flex; flex-direction: column; position: relative; -webkit-font-smoothing: antialiased;
+}
+vscode-window { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+/* ---------- Title bar ---------- */
+.title { height: 32px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; position: relative; }
+.window-controls { position: absolute; left: 12px; top: 10px; display: flex; gap: 8px; }
+.dot { width: 12px; height: 12px; border-radius: 50%; display: block; }
+.dot.close { background: #ff5f56; } .dot.min { background: #ffbd2e; } .dot.max { background: #27c93f; }
+.search { width: 420px; height: 22px; background: var(--vs-chip); border: 1px solid var(--vs-border); border-radius: 6px; display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--vs-muted); }
+.search svg { width: 12px; height: 12px; }
+
+/* ---------- Activity bar + cards ---------- */
+.main { flex: 1; display: flex; min-height: 0; padding-right: 4px; }
+/* The activity bar spans the window edge up to the first card, so its icons sit centred in that space. */
+.activity { width: 48px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; padding-top: 8px; gap: 18px; }
+.activity svg, .activity img { width: 22px; height: 22px; }
+.activity svg { color: #868686; stroke-width: 1.5; }
+.activity .on svg { color: #e7e7e7; }
+.card { border: 1px solid var(--vs-border); border-radius: 6px; overflow: hidden; min-height: 0; }
+.column { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+/* A 4px gap between cards with three grip dots in its middle, as in VS Code: 2px dots on a 5px pitch in the
+   1280x800 output, which is 1.6px / 4px at the 1.25x capture scale. */
+.sash { flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.sash::before { content: ''; }
+.sash.v { width: 4px; }
+.sash.v::before { width: 1.6px; height: 9.6px; background: repeating-linear-gradient(180deg, var(--vs-sash) 0 1.6px, transparent 1.6px 4px); }
+.sash.h { height: 4px; }
+.sash.h::before { width: 9.6px; height: 1.6px; background: repeating-linear-gradient(90deg, var(--vs-sash) 0 1.6px, transparent 1.6px 4px); }
+
+/* ---------- Side bar ---------- */
+.sidebar { width: 210px; flex-shrink: 0; background: var(--vs-window); }
+.sidebar h3 { font-size: 10px; font-weight: 400; letter-spacing: .5px; padding: 10px 16px; color: var(--vs-muted); }
+.file { height: 22px; display: flex; align-items: center; gap: 6px; padding-left: 16px; }
+.file .ic { width: 13px; height: 13px; border-radius: 3px; font-size: 8px; line-height: 13px; text-align: center; font-weight: 700; color: #1f1f1f; }
+.file.on { background: #2a2d2e; }
+
+/* ---------- Editor ---------- */
+.editor { flex: 1; display: flex; flex-direction: column; background: var(--vs-editor); }
+.tabs { height: 32px; flex-shrink: 0; display: flex; border-bottom: 1px solid var(--vs-border); }
+.tabs .t { padding: 0 14px; display: flex; align-items: center; border-right: 1px solid var(--vs-border); color: var(--vs-muted); }
+.tabs .t.on { color: #ffffff; box-shadow: inset 0 -1px 0 var(--vs-accent); }
+.code { flex: 1; padding: 6px 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "DejaVu Sans Mono", monospace; font-size: 12px; line-height: 18px; white-space: pre; }
+.ln { display: inline-block; width: 46px; text-align: right; padding-right: 18px; color: var(--vs-dim); }
+.kw { color: #569cd6; } .fn { color: #dcdcaa; } .str { color: #ce9178; } .var { color: #9cdcfe; } .cm { color: #6a9955; }
+
+/* ---------- Panel (Problems, Output, Terminal …) ---------- */
+.panel { height: 168px; flex-shrink: 0; display: flex; flex-direction: column; background: var(--vs-window); }
+.panel-tabs { height: 34px; flex-shrink: 0; display: flex; align-items: center; gap: 2px; padding: 0 8px; }
+.panel-tabs span { padding: 3px 8px; border-radius: 4px; color: #8b8b8b; }
+.panel-tabs .on { background: var(--vs-chip); color: #e7e7e7; }
+.panel-body { flex: 1; padding: 4px 16px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "DejaVu Sans Mono", monospace; font-size: 12px; line-height: 18px; white-space: pre; }
+.panel-body .ok { color: #23d18b; } .panel-body .dir { color: #27b2d4; }
+
+/* ---------- Status bar ---------- */
+.status { height: 22px; flex-shrink: 0; display: flex; align-items: center; gap: 14px; padding: 0 10px; font-size: 11px; color: var(--vs-muted); }
+.status svg { width: 12px; height: 12px; }
+.status .right { margin-left: auto; display: flex; gap: 14px; }
+
+/* ---------- Command Palette ---------- */
+.palette { position: absolute; left: 50%; transform: translateX(-50%); top: 36px; width: 520px; background: #202122; border: 1px solid #3a3b3c; border-radius: 8px; box-shadow: 0 0 14px rgba(0, 0, 0, .6); padding: 5px; }
+.input { height: 26px; background: var(--vs-editor); border: 1px solid var(--vs-accent); border-radius: 4px; display: flex; align-items: center; padding: 0 8px; }
+.caret { width: 1px; height: 14px; background: var(--vs-text); margin-left: 1px; }
+.list { margin-top: 5px; }
+.cmd { height: 22px; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; border-radius: 4px; }
+.cmd.selected { background: #04395e; outline: 1px solid #2488db; color: #ffffff; }
+.cmd .m { color: #2aaaff; font-weight: 700; }
+.cmd .k { display: flex; gap: 3px; }
+.cmd .k span { background: var(--vs-key); border: 1px solid #3a3b3c; border-bottom-color: #333435; border-radius: 3px; padding: 0 4px; font-size: 10px; line-height: 14px; }
