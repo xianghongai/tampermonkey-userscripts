@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>不要广告 测试页</title>
+  <!--
+    用法：用浏览器直接打开本文件（file://），不需要安装到 Tampermonkey。
+    页面先引入仓库公共的 Tampermonkey API 替身 ../../test/gm-mock.js，预置自定义规则，再引入脚本本体。
+    file:// 页面的域名为空，路径是本文件在磁盘上的路径，所以路径规则写成以 / 开头、不带域名的键来测试；域名规则只能测不命中的情况。
+    「模拟检测」一项照搬了阮一峰网络日志的广告拦截检测逻辑：检查广告图片及其父元素的计算样式 display。
+  -->
+  <style>
+    :root { color-scheme: light dark; }
+    body { margin: 0 auto; max-width: 960px; padding: 24px 16px; font: 14px/1.6 system-ui, sans-serif; }
+    h1 { font-size: 20px; }
+    h2 { margin-top: 32px; font-size: 16px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 4px 8px; border-bottom: 1px solid #8884; text-align: left; vertical-align: top; }
+    .pass { color: #1a7f37; }
+    .fail { color: #cf222e; font-weight: 600; }
+    .sample { padding: 8px 12px; border: 1px dashed #8888; border-radius: 6px; }
+    .ad { display: block; height: 60px; background: #f0c040; }
+    .flow { display: flex; gap: 8px; }
+    .flow > * { width: 80px; height: 40px; background: #8884; }
+  </style>
+</head>
+<body>
+  <h1>不要广告 测试页</h1>
+
+  <h2>自动测试</h2>
+  <p><button id="run" type="button">运行自动测试</button> <span id="summary"></span></p>
+  <table>
+    <thead><tr><th>场景</th><th>期望</th><th>实际</th><th>结果</th></tr></thead>
+    <tbody id="results"></tbody>
+  </table>
+
+  <h2>样例内容</h2>
+  <p>黄色块是模拟的广告，被脚本隐藏后应当看不到，也不留空白。</p>
+  <div class="sample">
+    <p id="before-ad">Text before the ad.</p>
+    <a id="ad-link" class="ad sponsor" href="#"><img id="ad-img" alt="ad" width="300" height="60" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='60'%3E%3Crect width='300' height='60' fill='%23f0c040'/%3E%3C/svg%3E"></a>
+    <p id="after-ad">Text after the ad.</p>
+    <div class="flow"><span id="flow-a"></span><span id="flow-ad" class="flow-ad"></span><span id="flow-b"></span></div>
+    <p id="other-host" class="other-host ad">A rule for another domain should not hide this.</p>
+    <p id="boundary" class="boundary ad">A rule for a sibling path should not hide this.</p>
+    <p id="valid-after-invalid" class="valid-after-invalid ad">Valid selector next to an invalid one still applies.</p>
+  </div>
+
+  <script src="../../test/gm-mock.js" data-name="No AD (test page)"></script>
+  <script>
+    // file:// 页面的域名为空，以 / 开头的键会被当作「空域名 + 路径」，正好匹配本文件所在目录
+    const DIR = location.pathname.slice(0, location.pathname.lastIndexOf('/'));
+    GM_mock.values.set('rules', {
+      [DIR]: ['a:has(> #ad-img)', '.flow-ad', '.valid-after-invalid', 'p[[invalid', 42],
+      'example.com': ['.other-host'],
+      [`${DIR}-old`]: ['.boundary'],
+    });
+  </script>
+  <script src="../no-ad.user.js"></script>
+  <script>
+    // ---------- 自动测试 ----------
+    const $ = (id) => document.getElementById(id);
+    // 脚本在短暂延迟后合并应用，等它执行完再断言
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 200));
+    const outOfView = (el) => el.getBoundingClientRect().bottom <= 0;
+    const visibleInView = (el) => !outOfView(el) && getComputedStyle(el).position !== 'absolute';
+
+    // 阮一峰网络日志的检测逻辑：广告图片或其父元素的计算样式为 display: none 即判定为装了拦截器
+    function siteDetectsBlocker() {
+      const img = document.querySelector('#ad-img');
+      return getComputedStyle(img).display === 'none' || getComputedStyle(img.parentElement).display === 'none';
+    }
+
+    const cases = [
+      ['样式只挂一个 <style>，类名带前缀', async () => document.querySelectorAll('style.user-script-no-ad-style').length, 1],
+      ['广告移出视口', async () => outOfView($('ad-link')), true],
+      ['广告不响应鼠标', async () => getComputedStyle($('ad-link')).pointerEvents, 'none'],
+      ['广告保留原有的 display', async () => getComputedStyle($('ad-link')).display, 'block'],
+      ['广告保留尺寸（offsetHeight 大于 0）', async () => $('ad-link').offsetHeight > 0, true],
+      ['模拟检测：不会被判定为装了拦截器', async () => siteDetectsBlocker(), false],
+      ['广告不占位置：前后文字之间没有空白', async () => {
+        const gap = $('after-ad').getBoundingClientRect().top - $('before-ad').getBoundingClientRect().bottom;
+        const margin = parseFloat(getComputedStyle($('after-ad')).marginTop);
+        return gap <= margin + 1;
+      }, true],
+      ['弹性布局中被隐藏的项不占位置', async () => {
+        const gap = $('flow-b').getBoundingClientRect().left - $('flow-a').getBoundingClientRect().right;
+        return gap <= 8 + 1;
+      }, true],
+      ['其他域名的规则不生效', async () => visibleInView($('other-host')), true],
+      ['路径规则不命中同名前缀的兄弟路径（/docs 不命中 /docs-old）', async () => visibleInView($('boundary')), true],
+      ['写错的选择器被剔除，同组其他选择器仍生效', async () => outOfView($('valid-after-invalid')), true],
+      ['后续加入的广告同样隐藏', async () => {
+        const ad = document.createElement('div');
+        ad.className = 'flow-ad';
+        $('before-ad').after(ad);
+        await settle();
+        const result = getComputedStyle(ad).position;
+        ad.remove();
+        return result;
+      }, 'absolute'],
+      ['<style> 被页面移除后自动补回', async () => {
+        document.querySelector('style.user-script-no-ad-style').remove();
+        document.body.append(document.createElement('div'));
+        await settle();
+        return outOfView($('ad-link'));
+      }, true],
+      ['已有自定义规则时不覆盖', async () => GM_mock.callsOf('GM_setValue').length, 0],
+    ];
+
+    $('run').addEventListener('click', async () => {
+      await settle();
+      const tbody = $('results');
+      tbody.textContent = '';
+      let failed = 0;
+      for (const [name, run, expected] of cases) {
+        let actual;
+        try {
+          actual = await run();
+        } catch (err) {
+          actual = `Error: ${err.message}`;
+        }
+        const ok = actual === expected;
+        if (!ok) failed += 1;
+        const row = tbody.insertRow();
+        row.insertCell().textContent = name;
+        row.insertCell().textContent = JSON.stringify(expected);
+        row.insertCell().textContent = JSON.stringify(actual);
+        const result = row.insertCell();
+        result.textContent = ok ? '通过' : '失败';
+        result.className = ok ? 'pass' : 'fail';
+      }
+      const summary = $('summary');
+      summary.textContent = failed ? `${failed} 项失败，共 ${cases.length} 项` : `全部通过，共 ${cases.length} 项`;
+      summary.className = failed ? 'fail' : 'pass';
+    });
+  </script>
+</body>
+</html>
