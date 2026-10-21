@@ -1,0 +1,128 @@
+/*
+  github.com (light theme) for <gh-*> elements rendered by github.js. Load after browser.css.
+  Colours and code token classes follow github.com's own: property names pl-ent, strings pl-s,
+  numbers and constants pl-c1, keywords pl-k, functions pl-en, comments pl-c, variables pl-v.
+*/
+gh-repo-header, gh-file-view, gh-comment { display: block; }
+gh-icon { display: inline-flex; align-items: center; }
+gh-icon svg { width: 16px; height: 16px; }
+
+/* ---------- Buttons ---------- */
+.gh-btn {
+  height: 28px; padding: 0 10px; border: 1px solid #d1d9e0; background: #f6f8fa; border-radius: 6px;
+  font-size: 12px; font-weight: 500; color: #24292f; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+}
+.gh-btn svg { width: 14px; height: 14px; color: #59636e; }
+.gh-btn.icon-only { padding: 0; width: 28px; justify-content: center; }
+.gh-btn.primary { background: #1f883d; border-color: rgba(31, 35, 40, 0.15); color: #ffffff; }
+.gh-btn.primary svg { color: #ffffff; }
+/* The element a userscript or extension injects, when it is a button that should stand out. */
+.gh-btn.injected { border-color: #0969da; box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.2); font-weight: 600; }
+.gh-btn.injected svg { color: #0969da; }
+.counter { background: rgba(175, 184, 193, 0.2); border-radius: 10px; padding: 1px 6px; font-size: 11px; font-weight: 600; }
+.badge { background: rgba(175, 184, 193, 0.2); border-radius: 10px; padding: 0 6px; font-size: 11px; }
+.callout-anchor.block { display: flex; }
+
+/* github.com keeps page content in a centred container at most 1280px wide (the header and tabs stay
+   full width); it only shows on canvases wider than that. */
+.repo-body, .file-area, .issue-head, .timeline { width: 100%; max-width: 1280px; margin-left: auto; margin-right: auto; }
+
+/* ---------- Repository header ---------- */
+.repo-header { background: #f6f8fa; border-bottom: 1px solid #d1d9e0; padding: 12px 24px 0; flex-shrink: 0; }
+.repo-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.repo-name { display: flex; align-items: center; gap: 8px; font-size: 16px; }
+.repo-name svg { width: 16px; height: 16px; color: #59636e; }
+.repo-name .owner { color: #0969da; }
+.repo-name .slash { color: #59636e; }
+.repo-name .repo { color: #0969da; font-weight: 600; }
+.visibility { border: 1px solid #d1d9e0; border-radius: 12px; padding: 1px 8px; font-size: 11px; color: #59636e; font-weight: 500; }
+.repo-actions { display: flex; align-items: center; gap: 8px; }
+.repo-tabs { display: flex; gap: 6px; }
+.repo-tab { display: flex; align-items: center; gap: 6px; padding: 8px 12px; font-size: 13px; border-bottom: 2px solid transparent; }
+.repo-tab svg { width: 14px; height: 14px; color: #59636e; }
+.repo-tab.active { font-weight: 600; border-bottom-color: #fd8c73; }
+
+/* ---------- Repository home: branch, latest commit, file list ---------- */
+.repo-body { padding: 16px 24px; }
+.branch { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #d1d9e0; background: #f6f8fa; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; margin-bottom: 12px; }
+.branch svg { width: 14px; height: 14px; }
+.commit { display: flex; justify-content: space-between; border: 1px solid #d1d9e0; background: #f6f8fa; border-radius: 6px 6px 0 0; padding: 10px 14px; font-size: 12px; }
+.commit b { font-weight: 600; margin-right: 8px; }
+.commit .msg, .commit .time { color: #59636e; }
+.files { border: 1px solid #d1d9e0; border-top: none; border-radius: 0 0 6px 6px; }
+.file-row { display: flex; align-items: center; padding: 8px 14px; font-size: 12px; }
+.file-row + .file-row { border-top: 1px solid #eef1f4; }
+.file-row .name { width: 220px; display: flex; align-items: center; gap: 8px; }
+.file-row .name svg { width: 14px; height: 14px; color: #59636e; }
+.file-row .name .dir svg { color: #54aeff; }
+.file-row .msg { flex: 1; color: #59636e; }
+.file-row .time { color: #656d76; font-size: 11px; }
+
+/* ---------- File view (/blob/) ---------- */
+.file-area { padding: 14px 24px 0; display: flex; flex-direction: column; min-height: 0; }
+.path-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.crumbs { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+.crumbs .link { color: #0969da; }
+.crumbs .sep { color: #59636e; }
+.crumbs .current { font-weight: 600; }
+.crumbs .gh-btn { margin-left: 6px; height: 24px; font-size: 11px; }
+.path-row-right { display: flex; align-items: center; gap: 8px; }
+.path-row-right .gh-btn { height: 26px; font-size: 12px; }
+.file-band { display: flex; align-items: center; justify-content: space-between; margin-bottom: 40px; }
+.commit-strip { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.commit-strip b { font-weight: 600; }
+.commit-strip .sha { display: inline-flex; align-items: center; gap: 5px; color: #59636e; margin-left: 6px; }
+.commit-strip .sha svg { width: 14px; height: 14px; color: #1a7f37; }
+.controls { border: 1px solid #d1d9e0; border-radius: 6px; padding: 6px 8px; display: flex; flex-direction: column; gap: 5px; align-items: flex-end; }
+.controls-row { display: flex; align-items: center; gap: 8px; }
+.controls-row .gh-btn { height: 24px; font-size: 12px; }
+.controls-meta { font-size: 11px; color: #59636e; }
+.segmented { display: flex; border: 1px solid #d1d9e0; border-radius: 6px; overflow: hidden; }
+.segmented span { padding: 4px 10px; font-size: 11px; font-weight: 500; color: #1f2328; }
+.segmented span + span { border-left: 1px solid #d1d9e0; }
+.segmented .on { background: #eef1f4; font-weight: 600; }
+
+/* ---------- Code ---------- */
+.blob-box { border: 1px solid #d1d9e0; border-radius: 6px; overflow: hidden; }
+.code-line { display: flex; align-items: flex-start; font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 12px; line-height: 20px; }
+.code-line .ln { width: 48px; flex-shrink: 0; text-align: right; padding-right: 16px; color: #59636e; user-select: none; }
+.code-line .lc { flex: 1; white-space: pre; color: #1f2328; }
+.pl-ent { color: #116329; }
+.pl-s { color: #0a3069; }
+.pl-c1 { color: #0550ae; }
+.pl-k { color: #cf222e; }
+.pl-en { color: #6639ba; }
+.pl-c { color: #59636e; }
+.pl-v { color: #953800; }
+
+/* ---------- Avatars ---------- */
+.avatar { border-radius: 50%; background: #24292f; color: #ffffff; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.avatar svg { width: 62%; height: 62%; }
+.commit-strip .avatar { width: 20px; height: 20px; }
+
+/* ---------- Issue / PR title ---------- */
+.issue-head { padding: 16px 24px 12px; border-bottom: 1px solid #d1d9e0; margin-bottom: 16px; }
+.issue-title { font-size: 22px; font-weight: 400; margin-bottom: 8px; }
+.issue-title .num { color: #59636e; font-weight: 300; }
+.issue-meta { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #59636e; }
+.issue-meta b { color: #1f2328; font-weight: 600; }
+.state { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 10px; border-radius: 13px; font-size: 12px; font-weight: 500; color: #ffffff; background: #1f883d; }
+.state svg { width: 14px; height: 14px; }
+.state.closed { background: #8250df; }
+
+/* ---------- Timeline comment ---------- */
+.timeline { padding: 0 24px; display: flex; flex-direction: column; gap: 16px; }
+.tl-comment { display: flex; gap: 12px; align-items: flex-start; }
+.tl-comment > .avatar { width: 40px; height: 40px; }
+.tl-box { flex: 1; min-width: 0; border: 1px solid #d1d9e0; border-radius: 6px; }
+.tl-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 38px; padding: 0 8px 0 16px; background: #f6f8fa; border-bottom: 1px solid #d1d9e0; border-radius: 6px 6px 0 0; font-size: 13px; color: #59636e; }
+.tl-head b { color: #1f2328; font-weight: 600; }
+.tl-head-right { display: flex; align-items: center; gap: 6px; }
+.tl-role { border: 1px solid #d1d9e0; border-radius: 12px; padding: 0 7px; font-size: 11px; font-weight: 500; line-height: 18px; color: #59636e; }
+.tl-action { width: 28px; height: 28px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; color: #59636e; }
+.tl-action svg { width: 16px; height: 16px; }
+.markdown-body { padding: 14px 16px; font-size: 14px; line-height: 1.5; color: #1f2328; }
+.markdown-body > * + * { margin-top: 10px; }
+.markdown-body code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; background: rgba(175, 184, 193, 0.2); border-radius: 6px; padding: 2px 5px; }
+.markdown-body a { color: #0969da; text-decoration: none; }
+.markdown-body blockquote { color: #59636e; border-left: 3px solid #d1d9e0; padding-left: 12px; }

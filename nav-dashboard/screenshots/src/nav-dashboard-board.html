@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<!--
+  Scene: the Nav Dashboard board open on the Vue 3 guide (cn.vuejs.org/guide/introduction),
+  as nav-dashboard.user.js renders it. The board is a copy of the site's own sidebar nav:
+    - waterfall layout, the layout vuejs.org/guide sets: groups flow down 3 columns,
+      none split across columns (the script marks each group break-inside: avoid)
+    - every group title is followed by its item count; the top-right bar shows the total
+      (共 51 项) and the close button; the page behind is locked
+    - the current page's link keeps the site's active style (green); the board scrolls it
+      into view, which here is already the top
+  Data: the Vue 3 guide sidebar as published (9 groups, 51 links), 3 columns of 317px.
+  The board is taller than the page and is shown scrolled to the top; the rest scrolls.
+  Toolbar: the Tampermonkey icon, then the browser menu, and nothing else.
+  Opens directly in a browser; _partials/ is copied next to this file by render.sh.
+  Render from the project root:
+    ~/.agents/skills/extension-screenshots/scripts/render.sh nav-dashboard/screenshots/src/nav-dashboard-board.html \
+      nav-dashboard/screenshots/nav-dashboard-board-1280x800.png
+-->
+<link rel="stylesheet" href="_partials/browser.css">
+<script defer src="_partials/browser.js"></script>
+<style>
+  .page-viewport { background: #fff; }
+
+  /* The board's own scroll container: fixed to the page, padding leaves room for the bar */
+  .scroller {
+    position: absolute; inset: 0; box-sizing: border-box;
+    padding: 28px 16px 14px; background: #fff; overflow: hidden;
+  }
+
+  /* The copied nav. Waterfall: 240px-wide columns, balanced, groups kept whole */
+  .board {
+    columns: 240px auto; column-gap: 20px; column-fill: balance;
+    font-family: Quotes, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+    color: #213547;
+  }
+  .board .group + .group { padding-top: 16px; }
+  .board section { break-inside: avoid; }
+  .board .title { padding: 4px 0; break-inside: avoid; break-after: avoid; }
+  .board .title-text { margin: 0; color: #213547; font-size: 13px; font-weight: 600; line-height: 20px; }
+  .board .link { display: block; padding: 4px 0; text-decoration: none; break-inside: avoid; }
+  .board .link-text { margin: 0; color: rgba(60, 60, 60, 0.7); font-size: 13px; font-weight: 500; line-height: 20px; }
+  .board .link.active .link-text { color: #42b883; font-weight: 600; }
+
+  /* The count the script appends to each title */
+  .user-script-nav-dashboard-count { margin-inline-start: 0.5em; font-size: 0.85em; font-weight: normal; opacity: 0.55; }
+
+  /* Top-right controls: total and close, in the site's colours */
+  .bar {
+    position: absolute; top: 12px; right: 16px; z-index: 10;
+    display: flex; gap: 8px; align-items: center;
+    color: #213547;
+    font: 14px/1.5 Quotes, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  }
+  .total { opacity: 0.55; }
+  .close {
+    width: 32px; height: 32px; display: grid; place-items: center;
+    padding: 0; border: 0; border-radius: 50%;
+    background: transparent; color: #213547; opacity: 0.7;
+  }
+  .close svg { width: 20px; height: 20px; }
+</style>
+</head>
+<body>
+  <browser-window favicon="vue-logo.svg" toolbar="tampermonkey"
+    tab-title="简介 | Vue.js"
+    url="cn.vuejs.org/guide/introduction">
+    <div class="scroller">
+      <nav class="board">
+        <div class="group">
+          <section class="VPSidebarGroup">
+            <div class="title"><h2 class="active title-text">开始<span class="user-script-nav-dashboard-count">2</span></h2></div>
+            <a class="link active" href="/guide/introduction.html"><p class="link-text">简介</p></a>
+            <a class="link" href="/guide/quick-start.html"><p class="link-text">快速上手</p></a>
+          </section>
+        </div>
+        <div class="group">
+          <section class="VPSidebarGroup">
+            <div class="title"><h2 class="title-text">基础<span class="callout-anchor"><span class="user-script-nav-dashboard-count">13</span><span class="callout right">分组下的项数</span></span></h2></div>
+            <a class="link" href="/guide/essentials/application.html"><p class="link-text">创建一个应用</p></a>
+            <a class="link" href="/guide/essentials/template-syntax.html"><p class="link-text">模板语法</p></a>
+            <a class="link" href="/guide/essentials/reactivity-fundamentals.html"><p class="link-text">响应式基础</p></a>
+            <a class="link" href="/guide/essentials/computed.html"><p class="link-text">计算属性</p></a>
+            <a class="link" href="/guide/essentials/class-and-style.html"><p class="link-text">类与样式绑定</p></a>
+            <a class="link" href="/guide/essentials/conditional.html"><p class="link-text">条件渲染</p></a>
+            <a class="link" href="/guide/essentials/list.html"><p class="link-text">列表渲染</p></a>
+            <a class="link" href="/guide/essentials/event-handling.html"><p class="link-text">事件处理</p></a>
+            <a class="link" href="/guide/essentials/forms.html"><p class="link-text">表单输入绑定</p></a>
+            <a class="link" href="/guide/essentials/watchers.html"><p class="link-text">侦听器</p></a>
+            <a class="link" href="/guide/essentials/template-refs.html"><p class="link-text">模板引用</p></a>
+            <a class="link" href="/guide/essentials/component-basics.html"><p class="link-text">组件基础</p></a>
+            <a class="link" href="/guide/essentials/lifecycle.html"><p class="link-text">生命周期</p></a>
+          </section>
+        </div>
+        <div class="group">
+          <section class="VPSidebarGroup">
+            <div class="title"><h2 class="title-text">深入组件<span class="user-script-nav-dashboard-count">8</span></h2></div>
+            <a class="link" href="/guide/components/registration.html"><p class="link-text"><span class="callout-anchor">注册<span class="callout right">点击跳转，Ctrl/⌘+点击在新标签页打开</span></span></p></a>
+            <a class="link" href="/guide/components/props.html"><p class="link-text">Props</p></a>
+            <a class="link" href="/guide/components/events.html"><p class="link-text">事件</p></a>
+            <a class="link" href="/guide/components/v-model.html"><p class="link-text">组件 v-model</p></a>
+            <a class="link" href="/guide/components/attrs.html"><p class="link-text">透传 Attributes</p></a>
+            <a class="link" href="/guide/components/slots.html"><p class="link-text">插槽</p></a>
+            <a class="link" href="/guide/components/provide-inject.html"><p class="link-text">依赖注入</p></a>
+            <a class="link" href="/guide/components/async.html"><p class="link-text">异步组件</p></a>
+          </section>
+        </div>
+        <div class="group">
+          <section class="VPSidebarGroup">
+            <div class="title"><h2 class="title-text">逻辑复用<span class="user-script-nav-dashboard-count">3</span></h2></div>
+            <a class="link" href="/guide/reusability/composables.html"><p class="link-text">组合式函数</p></a>
+            <a class="link" href="/guide/reusability/custom-directives.html"><p class="link-text">自定义指令</p></a>
+            <a class="link" href="/guide/reusability/plugins.html"><p class="link-text">插件</p></a>
+          </section>
+        </div>
+        <div class="group">
+          <section class="VPSidebarGroup">
+            <div class="title"><h2 class="title-text">内置组件<span class="user-script-nav-dashboard-count">5</span></h2></div>
+            <a class="link" href="/guide/built-ins/transition.html"><p class="link-text">Transition</p></a>
+            <a class="link" href="/guide/built-ins/transition-group.html"><p class="link-text">TransitionGroup</p></a>
+            <a class="link" href="/guide/built-ins/keep-alive.html"><p class="link-text">KeepAlive</p></a>
+            <a class="link" href="/guide/built-ins/teleport.html"><p class="link-text">Teleport</p></a>
+            <a class="link" href="/guide/built-ins/suspense.html"><p class="link-text">Suspense</p></a>
+          </section>
+        </div>
+        <div class="group">
+          <section class="VPSidebarGroup">
+            <div class="title"><h2 class="title-text">应用规模化<span class="user-script-nav-dashboard-count">6</span></h2></div>
+            <a class="link" href="/guide/scaling-up/sfc.html"><p class="link-text">单文件组件</p></a>
+            <a class="link" href="/guide/scaling-up/tooling.html"><p class="link-text">工具链</p></a>
+            <a class="link" href="/guide/scaling-up/routing.html"><p class="link-text">路由</p></a>
+            <a class="link" href="/guide/scaling-up/state-management.html"><p class="link-text">状态管理</p></a>
+            <a class="link" href="/guide/scaling-up/testing.html"><p class="link-text">测试</p></a>
+            <a class="link" href="/guide/scaling-up/ssr.html"><p class="link-text">服务端渲染 (SSR)</p></a>
+          </section>
+        </div>
+        <div class="group">
+          <section class="VPSidebarGroup">
+            <div class="title"><h2 class="title-text">最佳实践<span class="user-script-nav-dashboard-count">4</span></h2></div>
+            <a class="link" href="/guide/best-practices/production-deployment.html"><p class="link-text">生产部署</p></a>
+            <a class="link" href="/guide/best-practices/performance.html"><p class="link-text">性能优化</p></a>
+            <a class="link" href="/guide/best-practices/accessibility.html"><p class="link-text">无障碍访问</p></a>
+            <a class="link" href="/guide/best-practices/security.html"><p class="link-text">安全</p></a>
+          </section>
+        </div>
+        <div class="group">
+          <section class="VPSidebarGroup">
+            <div class="title"><h2 class="title-text">TypeScript<span class="user-script-nav-dashboard-count">3</span></h2></div>
+            <a class="link" href="/guide/typescript/overview.html"><p class="link-text">总览</p></a>
+            <a class="link" href="/guide/typescript/composition-api.html"><p class="link-text">TS 与组合式 API</p></a>
+            <a class="link" href="/guide/typescript/options-api.html"><p class="link-text">TS 与选项式 API</p></a>
+          </section>
+        </div>
+        <div class="group">
+          <section class="VPSidebarGroup">
+            <div class="title"><h2 class="title-text">进阶主题<span class="user-script-nav-dashboard-count">7</span></h2></div>
+            <a class="link" href="/guide/extras/ways-of-using-vue.html"><p class="link-text">使用 Vue 的多种方式</p></a>
+            <a class="link" href="/guide/extras/composition-api-faq.html"><p class="link-text">组合式 API 常见问答</p></a>
+            <a class="link" href="/guide/extras/reactivity-in-depth.html"><p class="link-text">深入响应式系统</p></a>
+            <a class="link" href="/guide/extras/rendering-mechanism.html"><p class="link-text">渲染机制</p></a>
+            <a class="link" href="/guide/extras/render-function.html"><p class="link-text">渲染函数 &amp; JSX</p></a>
+            <a class="link" href="/guide/extras/web-components.html"><p class="link-text">Vue 与 Web Components</p></a>
+            <a class="link" href="/guide/extras/animation.html"><p class="link-text">动画技巧</p></a>
+          </section>
+        </div>
+      </nav>
+    </div>
+    <div class="bar">
+      <span class="callout-anchor"><span class="total">共 51 项</span><span class="callout left">看板全部项数</span></span>
+      <button class="close" type="button" aria-label="关闭">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+  </browser-window>
+</body>
+</html>
