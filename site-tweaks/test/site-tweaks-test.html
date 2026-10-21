@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>网页微调 测试页</title>
+  <!--
+    用法：用浏览器直接打开本文件（file://），不需要安装到 Tampermonkey。
+    页面先引入仓库公共的 Tampermonkey API 替身 ../../test/gm-mock.js，预置自定义规则，再引入脚本本体。
+    file:// 页面的域名为空，路径是本文件在磁盘上的路径，所以路径规则写成以 / 开头、不带域名的键来测试；域名规则只能测不命中的情况。
+  -->
+  <style>
+    :root { color-scheme: light dark; }
+    body { margin: 0 auto; max-width: 960px; padding: 24px 16px; font: 14px/1.6 system-ui, sans-serif; }
+    h1 { font-size: 20px; }
+    h2 { margin-top: 32px; font-size: 16px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 4px 8px; border-bottom: 1px solid #8884; text-align: left; vertical-align: top; }
+    .pass { color: #1a7f37; }
+    .fail { color: #cf222e; font-weight: 600; }
+    .sample { padding: 8px 12px; border: 1px dashed #8888; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <h1>网页微调 测试页</h1>
+
+  <h2>自动测试</h2>
+  <p><button id="run" type="button">运行自动测试</button> <span id="summary"></span></p>
+  <table>
+    <thead><tr><th>场景</th><th>期望</th><th>实际</th><th>结果</th></tr></thead>
+    <tbody id="results"></tbody>
+  </table>
+
+  <h2>样例内容</h2>
+  <div class="sample">
+    <p id="by-path" class="by-path">Styled by a custom rule for this path (red).</p>
+    <p id="other-host" class="other-host">A rule for another domain should not style this.</p>
+    <p id="boundary" class="boundary">A rule for a sibling path should not style this.</p>
+    <p id="all-sites" class="all-sites">Styled by a custom rule for all sites (blue).</p>
+    <p id="not-string" class="not-string">A rule whose value is not a string should be skipped.</p>
+  </div>
+
+  <script src="../../test/gm-mock.js" data-name="Site Tweaks (test page)"></script>
+  <script>
+    // file:// 页面的域名为空，以 / 开头的键会被当作「空域名 + 路径」，正好匹配本文件所在目录
+    const DIR = location.pathname.slice(0, location.pathname.lastIndexOf('/'));
+    GM_mock.values.set('rules', {
+      '*': '.all-sites { color: rgb(0, 0, 255); }',
+      [DIR]: '.by-path { color: rgb(255, 0, 0); }',
+      'example.com': '.other-host { color: rgb(255, 0, 0); }',
+      [`${DIR}-old`]: '.boundary { color: rgb(255, 0, 0); }',
+      [`${DIR}/`]: { css: '.not-string { color: rgb(255, 0, 0); }' },
+    });
+  </script>
+  <script src="../site-tweaks.user.js"></script>
+  <script>
+    // ---------- 自动测试 ----------
+    const $ = (id) => document.getElementById(id);
+    const color = (id) => getComputedStyle($(id)).color;
+    // 脚本在短暂延迟后合并应用，等它执行完再断言
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 200));
+    const RED = 'rgb(255, 0, 0)';
+
+    const cases = [
+      ['样式只挂一个 <style>，类名带前缀', async () => document.querySelectorAll('style.user-script-site-tweaks-style').length, 1],
+      ['路径规则的样式生效', async () => color('by-path'), RED],
+      ['其他域名的规则不生效', async () => color('other-host') !== RED, true],
+      ['路径规则不命中同名前缀的兄弟路径（/docs 不命中 /docs-old）', async () => color('boundary') !== RED, true],
+      ['* 规则对所有网站生效', async () => color('all-sites'), 'rgb(0, 0, 255)'],
+      ['值不是字符串的规则被跳过，不影响其他规则', async () => color('not-string') !== RED, true],
+      ['<style> 被页面移除后自动补回', async () => {
+        document.querySelector('style.user-script-site-tweaks-style').remove();
+        document.body.append(document.createElement('div'));
+        await settle();
+        return color('by-path');
+      }, RED],
+      ['运行中修改自定义规则，后续变化时生效', async () => {
+        GM_mock.values.set('rules', { ...GM_mock.values.get('rules'), [DIR]: '.by-path { color: rgb(0, 128, 0); }' });
+        document.body.append(document.createElement('div'));
+        await settle();
+        return color('by-path');
+      }, 'rgb(0, 128, 0)'],
+      ['已有自定义规则时不覆盖', async () => GM_mock.callsOf('GM_setValue').length, 0],
+    ];
+
+    $('run').addEventListener('click', async () => {
+      await settle();
+      const tbody = $('results');
+      tbody.textContent = '';
+      let failed = 0;
+      for (const [name, run, expected] of cases) {
+        let actual;
+        try {
+          actual = await run();
+        } catch (err) {
+          actual = `Error: ${err.message}`;
+        }
+        const ok = actual === expected;
+        if (!ok) failed += 1;
+        const row = tbody.insertRow();
+        row.insertCell().textContent = name;
+        row.insertCell().textContent = JSON.stringify(expected);
+        row.insertCell().textContent = JSON.stringify(actual);
+        const result = row.insertCell();
+        result.textContent = ok ? '通过' : '失败';
+        result.className = ok ? 'pass' : 'fail';
+      }
+      const summary = $('summary');
+      summary.textContent = failed ? `${failed} 项失败，共 ${cases.length} 项` : `全部通过，共 ${cases.length} 项`;
+      summary.className = failed ? 'fail' : 'pass';
+    });
+  </script>
+</body>
+</html>
