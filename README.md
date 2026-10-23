@@ -11,7 +11,6 @@ Tampermonkey userscripts made for my own use and shared publicly. See the README
 - [GitHub 😍 DeepWiki](github-deepwiki/): Open a GitHub repository's DeepWiki docs in one click. ![Greasy Fork](assets/greasyfork.svg) [Greasy Fork](https://greasyfork.org/scripts/600227-github-deepwiki)
 - [GitHub & Gist: Collapse & Copy](github-gist-collapse-copy/): Collapse Gist files and GitHub comments, and copy their source in one click. ![Greasy Fork](assets/greasyfork.svg) [Greasy Fork](https://greasyfork.org/scripts/600306-github-gist-collapse-copy)
 - [GitHub & Gist: Mask Secrets](github-mask-secrets/): Mask tokens, passwords and other secrets in GitHub repos and Gists when sharing your screen or copying code. ![Greasy Fork](assets/greasyfork.svg) [Greasy Fork](https://greasyfork.org/scripts/600550-github-gist-mask-secrets)
-- [Google Contacts: Shortcuts](google-contacts-shortcuts/): Keyboard shortcuts to edit contacts and save changes in Google Contacts.
 - [Nav Dashboard](nav-dashboard/): Lay out a documentation site's navigation groups on a full-screen board to see the whole tech stack. ![Greasy Fork](assets/greasyfork.svg) [Greasy Fork](https://greasyfork.org/scripts/402459-nav-dashboard)
 - [No-Translate Zones](no-translate-zones/): Keep code blocks and chosen content in the original language when translating a page. ![Greasy Fork](assets/greasyfork.svg) [Greasy Fork](https://greasyfork.org/scripts/374163-no-translate-zones)
 
@@ -28,6 +27,5 @@ Tampermonkey userscripts made for my own use and shared publicly. See the README
 - [GitHub 😍 DeepWiki](github-deepwiki/)：在 GitHub 仓库页面一键打开该仓库在 DeepWiki 上的文档。![Greasy Fork](assets/greasyfork.svg) [Greasy Fork](https://greasyfork.org/scripts/600227-github-deepwiki)
 - [GitHub & Gist: Collapse & Copy](github-gist-collapse-copy/)：折叠 Gist 文件与 GitHub 评论，并一键复制原文。![Greasy Fork](assets/greasyfork.svg) [Greasy Fork](https://greasyfork.org/scripts/600306-github-gist-collapse-copy)
 - [GitHub & Gist: Mask Secrets](github-mask-secrets/)：共享屏幕或复制代码时遮盖 GitHub 仓库与 Gist 里的 Token、密码等凭据。![Greasy Fork](assets/greasyfork.svg) [Greasy Fork](https://greasyfork.org/scripts/600550-github-gist-mask-secrets)
-- [Google Contacts: Shortcuts](google-contacts-shortcuts/)：在 Google 通讯录里用快捷键进入编辑、保存修改。
 - [Nav Dashboard](nav-dashboard/)：把技术文档网站的导航分组铺开成全屏看板，一览整个技术栈。![Greasy Fork](assets/greasyfork.svg) [Greasy Fork](https://greasyfork.org/scripts/402459-nav-dashboard)
 - [No-Translate Zones](no-translate-zones/)：翻译网页时保留代码块及指定内容的原文。![Greasy Fork](assets/greasyfork.svg) [Greasy Fork](https://greasyfork.org/scripts/374163-no-translate-zones)
