@@ -4,7 +4,7 @@
 
 ## 目录结构
 
-一个脚本一个目录，目录名与脚本文件名去掉 `.user.js` 后一致，使用 kebab-case。根目录只放项目级文件（`AGENTS.md`、`CLAUDE.md`、`.gitignore`、`.agents/`、`test/`），不放脚本、截图或 README 以外的脚本资料。`test/` 只放各脚本测试页共用的测试设施。
+一个脚本一个目录，目录名与脚本文件名去掉 `.user.js` 后一致，使用 kebab-case。根目录只放项目级文件（`AGENTS.md`、`CLAUDE.md`、`.gitignore`、`.agents/`、`__tests__/`），不放脚本、截图或 README 以外的脚本资料。`__tests__/` 只放各脚本测试页共用的测试设施。
 
 脚本目录内的文件：
 
@@ -14,7 +14,7 @@
 | `<script-name>/README.md` | 是 | 脚本说明，写法见下节 |
 | `<script-name>/screenshots/<script-name>-<scene>-1280x800.png` | 否 | 生成的截图 |
 | `<script-name>/screenshots/src/<script-name>-<scene>.html` | 否 | 截图的 HTML 原稿，界面变化时改原稿再重新渲染 |
-| `<script-name>/test/<script-name>-test.html` | 否 | 测试页，用浏览器直接打开，先引入 `test/gm-mock.js` 再引入脚本本体；脚本行为变化时同步更新用例 |
+| `<script-name>/test/<script-name>-test.html` | 否 | 测试页，用浏览器直接打开，先引入 `__tests__/gm-mock.js` 再引入脚本本体；脚本行为变化时同步更新用例 |
 
 - 截图文件名保留 `<script-name>-` 前缀。Greasy Fork 更新时按文件名对应已发布的截图，改名会导致对不上。
 - 截图原稿里的渲染命令以项目根目录为工作目录，路径写到脚本目录一级，例如 `<script-name>/screenshots/src/...`。
@@ -45,8 +45,8 @@ README 给使用者看，只讲用途，不讲技术实现。
 ## 验证
 
 - 逻辑与行为用测试页验证：断言复制内容、事件拦截、DOM 结构这类可以由程序判断的结果。
-- 测试页统一使用 `test/gm-mock.js` 提供的 Tampermonkey API 替身，通过其中的 `GM_mock` 读取调用记录、预置存储、模拟网络响应。
-  缺少某个接口时补进 `test/gm-mock.js`，不在单个测试页里另写模拟；只实现日常用到的接口，只面向最新版浏览器。
+- 测试页统一使用 `__tests__/gm-mock.js` 提供的 Tampermonkey API 替身，通过其中的 `GM_mock` 读取调用记录、预置存储、模拟网络响应。
+  缺少某个接口时补进 `__tests__/gm-mock.js`，不在单个测试页里另写模拟；只实现日常用到的接口，只面向最新版浏览器。
 - 图标、配色、排版这类视觉效果，Agent 只负责按要求替换，不截图确认，由开发者自行查看是否满意。截图确认耗时长，而视觉是否满意本来就由开发者判断。
 
 ## 版本更新

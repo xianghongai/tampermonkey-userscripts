@@ -6,7 +6,7 @@
   <title>禁译区 测试页</title>
   <!--
     用法：用浏览器直接打开本文件（file://），不需要安装到 Tampermonkey。
-    页面先引入仓库公共的 Tampermonkey API 替身 ../../test/gm-mock.js，预置自定义规则，再引入脚本本体。
+    页面先引入仓库公共的 Tampermonkey API 替身 ../../__tests__/gm-mock.js，预置自定义规则，再引入脚本本体。
     file:// 页面的域名为空，路径是本文件在磁盘上的路径，所以路径规则写成以 / 开头、不带域名的键来测试；域名规则只能测不命中的情况。
     也可以在 Chrome 里对本页使用「翻译成中文」，直观查看哪些内容保持原文。
   -->
@@ -46,7 +46,7 @@
     <p id="preset" translate="no">Already marked by the page itself.</p>
   </div>
 
-  <script src="../../test/gm-mock.js" data-name="No-Translate Zones (test page)"></script>
+  <script src="../../__tests__/gm-mock.js" data-name="No-Translate Zones (test page)"></script>
   <script>
     // file:// 页面的域名为空，以 / 开头的键会被当作「空域名 + 路径」，正好匹配本文件所在目录
     const DIR = location.pathname.slice(0, location.pathname.lastIndexOf('/'));

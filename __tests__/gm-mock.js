@@ -2,7 +2,7 @@
 // 只实现日常用到的接口，不追求完整覆盖；只面向最新版浏览器，不做兼容处理。
 //
 // 用法：以普通脚本在脚本本体之前引入，data-* 属性填写 GM_info.script 的字段，省略时 name 取页面标题。
-//   <script src="../../test/gm-mock.js" data-name="Copy it 🚀" data-version="1.6.0"></script>
+//   <script src="../../__tests__/gm-mock.js" data-name="Copy it 🚀" data-version="1.6.0"></script>
 //   <script src="../copy-it.user.js"></script>
 //
 // 测试页通过 GM_mock 读取记录、预置数据、模拟网络响应，详见下方 GMMock 的注释。

@@ -6,7 +6,7 @@
   <title>Copy it 测试页</title>
   <!--
     用法：用浏览器直接打开本文件（file://），不需要安装到 Tampermonkey。
-    页面先引入仓库公共的 Tampermonkey API 替身 ../../test/gm-mock.js，再以普通脚本引入 ../copy-it.user.js。
+    页面先引入仓库公共的 Tampermonkey API 替身 ../../__tests__/gm-mock.js，再以普通脚本引入 ../copy-it.user.js。
     「自动测试」用合成事件逐项断言；「手动测试」区用真实键盘和鼠标操作，结果显示在复制记录里。
   -->
   <style>
@@ -64,7 +64,7 @@ line two</textarea></div>
   <h2>复制记录</h2>
   <div id="log"></div>
 
-  <script src="../../test/gm-mock.js" data-name="Copy it 🚀 (test page)"></script>
+  <script src="../../__tests__/gm-mock.js" data-name="Copy it 🚀 (test page)"></script>
   <script>
     window.__pageHandlers = [];
     GM_mock.addEventListener('call', ({ detail }) => {

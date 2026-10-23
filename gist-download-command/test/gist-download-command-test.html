@@ -6,7 +6,7 @@
   <title>Gist 下载命令 测试页</title>
   <!--
     用法：用浏览器直接打开本文件（file://），不需要安装到 Tampermonkey。
-    页面仿照 Gist 详情页的文件列表结构，先引入仓库公共的 Tampermonkey API 替身 ../../test/gm-mock.js，再引入 ../gist-download-command.user.js。
+    页面仿照 Gist 详情页的文件列表结构，先引入仓库公共的 Tampermonkey API 替身 ../../__tests__/gm-mock.js，再引入 ../gist-download-command.user.js。
     「自动测试」按「无清单 / 有清单」与「公开 / 私有」组合的场景逐项断言复制的命令；页面上的按钮也可以手动点击，结果显示在复制记录里。
   -->
   <style>
@@ -107,7 +107,7 @@
       if (secret !== undefined) render({ ...state, secret: secret === 'true' });
     });
   </script>
-  <script src="../../test/gm-mock.js" data-name="Gist: Download Commands (test page)"></script>
+  <script src="../../__tests__/gm-mock.js" data-name="Gist: Download Commands (test page)"></script>
   <script>
     GM_mock.addEventListener('call', ({ detail }) => {
       if (detail.name !== 'GM_setClipboard') return;

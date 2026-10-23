@@ -6,7 +6,7 @@
   <title>Google 通讯录快捷键 测试页</title>
   <!--
     用法：用浏览器直接打开本文件（file://），不需要安装到 Tampermonkey。
-    页面先引入仓库公共的 Tampermonkey API 替身 ../../test/gm-mock.js，再引入脚本本体。
+    页面先引入仓库公共的 Tampermonkey API 替身 ../../__tests__/gm-mock.js，再引入脚本本体。
     页面仿照 Google 通讯录的两个按钮：查看联系人时的「修改」、编辑时的「保存」，jsname 与无障碍名称照抄自真实页面。
     「保存」按钮的 jsname 沿用旧脚本，真实页面中处于编辑状态时才出现，未能在线核对。
   -->
@@ -44,7 +44,7 @@
     </div>
   </div>
 
-  <script src="../../test/gm-mock.js" data-name="Google Contacts: Shortcuts (test page)"></script>
+  <script src="../../__tests__/gm-mock.js" data-name="Google Contacts: Shortcuts (test page)"></script>
   <script src="../google-contacts-shortcuts.user.js"></script>
   <script>
     // ---------- 仿照页面行为：点「修改」进入编辑，点「保存」回到查看 ----------

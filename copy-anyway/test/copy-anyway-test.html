@@ -6,7 +6,7 @@
   <title>允许复制 测试页</title>
   <!--
     用法：用浏览器直接打开本文件（file://），不需要安装到 Tampermonkey。
-    页面先引入仓库公共的 Tampermonkey API 替身 ../../test/gm-mock.js，再引入脚本本体，最后才注册页面自己的限制，模拟真实网站的加载顺序。
+    页面先引入仓库公共的 Tampermonkey API 替身 ../../__tests__/gm-mock.js，再引入脚本本体，最后才注册页面自己的限制，模拟真实网站的加载顺序。
     「模拟限制」区域用了网站常见的几种手段：user-select: none、透明的选中高亮、拦截 selectstart / copy / contextmenu / 快捷键、复制时追加版权声明。
     file:// 页面不在内置网站之列，测试通过替身执行菜单命令来开关；也可以手动点击「切换开关」后亲自拖选、复制。
   -->
@@ -48,7 +48,7 @@
   <p>复制下来的内容粘贴到这里：</p>
   <textarea id="paste" rows="3" style="width: 100%"></textarea>
 
-  <script src="../../test/gm-mock.js" data-name="Copy Anyway (test page)"></script>
+  <script src="../../__tests__/gm-mock.js" data-name="Copy Anyway (test page)"></script>
   <script src="../copy-anyway.user.js"></script>
   <script>
     // ---------- 页面自己的限制，注册在脚本之后 ----------

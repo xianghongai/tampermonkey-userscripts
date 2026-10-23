@@ -6,7 +6,7 @@
   <title>BootCDN 一键复制全部 测试页</title>
   <!--
     用法：用浏览器直接打开本文件（file://），不需要安装到 Tampermonkey。
-    页面仿照 BootCDN 库页面的结构，先引入仓库公共的 Tampermonkey API 替身 ../../test/gm-mock.js，再引入 ../bootcdn-copy-all.user.js。
+    页面仿照 BootCDN 库页面的结构，先引入仓库公共的 Tampermonkey API 替身 ../../__tests__/gm-mock.js，再引入 ../bootcdn-copy-all.user.js。
     「自动测试」模拟切换版本、筛选文件类型、切换协议后逐项断言；页面上的按钮也可以手动点击，结果显示在复制记录里。
   -->
   <style>
@@ -101,7 +101,7 @@
       if (protocol) switchProtocol(protocol);
     });
   </script>
-  <script src="../../test/gm-mock.js" data-name="BootCDN: Copy All (test page)"></script>
+  <script src="../../__tests__/gm-mock.js" data-name="BootCDN: Copy All (test page)"></script>
   <script>
     GM_mock.addEventListener('call', ({ detail }) => {
       if (detail.name !== 'GM_setClipboard') return;
