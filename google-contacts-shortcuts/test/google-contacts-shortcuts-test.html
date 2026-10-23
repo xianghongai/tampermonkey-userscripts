@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Google 通讯录快捷键 测试页</title>
+  <!--
+    用法：用浏览器直接打开本文件（file://），不需要安装到 Tampermonkey。
+    页面先引入仓库公共的 Tampermonkey API 替身 ../../__tests__/gm-mock.js，再引入脚本本体。
+    页面仿照 Google 通讯录的两个按钮：查看联系人时的「修改」、编辑时的「保存」，jsname 与无障碍名称照抄自真实页面。
+    「保存」按钮的 jsname 沿用旧脚本，真实页面中处于编辑状态时才出现，未能在线核对。
+  -->
+  <style>
+    :root { color-scheme: light dark; }
+    body { margin: 0 auto; max-width: 960px; padding: 24px 16px; font: 14px/1.6 system-ui, sans-serif; }
+    h1 { font-size: 20px; }
+    h2 { margin-top: 32px; font-size: 16px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 4px 8px; border-bottom: 1px solid #8884; text-align: left; vertical-align: top; }
+    .pass { color: #1a7f37; }
+    .fail { color: #cf222e; font-weight: 600; }
+    .sample { padding: 8px 12px; border: 1px dashed #8888; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <h1>Google 通讯录快捷键 测试页</h1>
+
+  <h2>自动测试</h2>
+  <p><button id="run" type="button">运行自动测试</button> <span id="summary"></span></p>
+  <table>
+    <thead><tr><th>场景</th><th>期望</th><th>实际</th><th>结果</th></tr></thead>
+    <tbody id="results"></tbody>
+  </table>
+
+  <h2>仿 Google 通讯录</h2>
+  <p>当前状态：<strong id="mode"></strong>。可以手动按 Alt+L 进入编辑，按 Alt+O 或 Ctrl/⌘+S 保存。</p>
+  <div class="sample">
+    <div id="view">
+      <button id="edit" type="button" jsname="rhPddf" aria-label="修改">修改</button>
+    </div>
+    <div id="form" hidden>
+      <input id="name" value="Example">
+      <button id="save" type="button" jsname="JbVpqb" aria-label="保存">保存</button>
+    </div>
+  </div>
+
+  <script src="../../__tests__/gm-mock.js" data-name="Google Contacts: Shortcuts (test page)"></script>
+  <script src="../google-contacts-shortcuts.user.js"></script>
+  <script>
+    // ---------- 仿照页面行为：点「修改」进入编辑，点「保存」回到查看 ----------
+    const clicks = [];
+    function setMode(editing) {
+      document.getElementById('view').hidden = editing;
+      document.getElementById('form').hidden = !editing;
+      document.getElementById('mode').textContent = editing ? '编辑' : '查看';
+    }
+    document.getElementById('edit').addEventListener('click', () => { clicks.push('edit'); setMode(true); document.getElementById('name').focus(); });
+    document.getElementById('save').addEventListener('click', () => { clicks.push('save'); setMode(false); });
+    setMode(false);
+  </script>
+  <script>
+    // ---------- 自动测试 ----------
+    const $ = (id) => document.getElementById(id);
+    const IS_MAC = /mac/i.test(navigator.userAgentData?.platform ?? navigator.platform);
+    const MOD = IS_MAC ? { metaKey: true } : { ctrlKey: true };
+
+    // 在指定元素上按键，返回 [点击了哪个按钮, 默认行为是否被阻止]
+    function press(code, opts, target = document.activeElement ?? document.body) {
+      clicks.length = 0;
+      const event = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, code, ...opts });
+      target.dispatchEvent(event);
+      return [clicks.join('') || '-', event.defaultPrevented].join('|');
+    }
+
+    const cases = [
+      ['查看时 Alt+L：进入编辑', async () => press('KeyL', { altKey: true }), 'edit|true'],
+      ['编辑时焦点在输入框，Alt+O：保存', async () => press('KeyO', { altKey: true }, $('name')), 'save|true'],
+      ['再次进入编辑后 Ctrl/⌘+S：保存', async () => { press('KeyL', { altKey: true }); return press('KeyS', MOD, $('name')); }, 'save|true'],
+      ['查看时没有「保存」按钮，Alt+O 不拦截', async () => press('KeyO', { altKey: true }), '-|false'],
+      ['查看时 Ctrl/⌘+S 不拦截，交给浏览器', async () => press('KeyS', MOD), '-|false'],
+      ['编辑时没有「修改」按钮，Alt+L 不拦截', async () => { press('KeyL', { altKey: true }); return press('KeyL', { altKey: true }, $('name')); }, '-|false'],
+      ['多按了修饰键不触发', async () => [
+        press('KeyO', { altKey: true, shiftKey: true }, $('name')),
+        press('KeyS', { ...MOD, shiftKey: true }, $('name')),
+      ].join(','), '-|false,-|false'],
+      ['按钮禁用时不点击', async () => {
+        $('edit').disabled = true;
+        const result = press('KeyL', { altKey: true });
+        $('edit').disabled = false;
+        return result;
+      }, '-|false'],
+    ];
+
+    $('run').addEventListener('click', async () => {
+      setMode(false);
+      const tbody = $('results');
+      tbody.textContent = '';
+      let failed = 0;
+      for (const [name, run, expected] of cases) {
+        let actual;
+        try {
+          actual = await run();
+        } catch (err) {
+          actual = `Error: ${err.message}`;
+        }
+        const ok = actual === expected;
+        if (!ok) failed += 1;
+        const row = tbody.insertRow();
+        row.insertCell().textContent = name;
+        row.insertCell().textContent = JSON.stringify(expected);
+        row.insertCell().textContent = JSON.stringify(actual);
+        const result = row.insertCell();
+        result.textContent = ok ? '通过' : '失败';
+        result.className = ok ? 'pass' : 'fail';
+      }
+      setMode(false);
+      const summary = $('summary');
+      summary.textContent = failed ? `${failed} 项失败，共 ${cases.length} 项` : `全部通过，共 ${cases.length} 项`;
+      summary.className = failed ? 'fail' : 'pass';
+    });
+  </script>
+</body>
+</html>
