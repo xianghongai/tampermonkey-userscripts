@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Chat Tweaks 测试页</title>
+  <!--
+    用法：先在本目录的上两级启动静态服务（例如 python3 -m http.server），再用浏览器打开本页；不需要安装到 Tampermonkey。
+    脚本按域名选站点规则，页面没有对应域名，所以这里读出脚本源码，用伪造的 location（claude.ai）运行。
+    迷你页面模仿 Claude 的结构：对话列与输入框都引用 --transcript-width，用户消息气泡是包着 .cds-user-message-body 的一层；
+    验证脚本给官方元素打上自己的类名、宽度变量、气泡样式、菜单修改、非法输入。
+    各站点真实页面的选择器与变量名要到站点上手工确认。
+  -->
+  <style>
+    :root { color-scheme: light dark; }
+    body { margin: 0; padding: 24px 16px; font: 14px/1.6 system-ui, sans-serif; }
+    h1 { font-size: 20px; }
+    h2 { margin-top: 32px; font-size: 16px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 4px 8px; border-bottom: 1px solid #8884; text-align: left; vertical-align: top; }
+    .pass { color: #1a7f37; }
+    .fail { color: #cf222e; font-weight: 600; }
+    #column, #composer { width: 100%; max-width: var(--transcript-width, 48rem); height: 32px; margin: 8px 0; background: #8883; }
+  </style>
+</head>
+<body>
+  <h1>AI Chat Tweaks 测试页</h1>
+
+  <h2>自动测试</h2>
+  <p><button id="run" type="button">运行自动测试</button> <span id="summary"></span></p>
+  <table>
+    <thead><tr><th>场景</th><th>期望</th><th>实际</th><th>结果</th></tr></thead>
+    <tbody id="results"></tbody>
+  </table>
+
+  <h2>模拟的对话页</h2>
+  <div data-testid="chat-column" id="column"></div>
+  <div id="composer"></div>
+  <div id="user-bubble"><div><div class="cds-user-message-body">用户消息</div></div></div>
+  <div id="ai-reply"><p>AI 回复，不应被改动。</p></div>
+
+  <script src="../../test/gm-mock.js" data-name="AI Chat Tweaks (test page)"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const settle = (ms = 100) => new Promise((resolve) => setTimeout(resolve, ms));
+    const width = (id) => Math.round($(id).getBoundingClientRect().width);
+    const menu = () => GM_mock.menu.get('width');
+    const html = document.documentElement;
+
+    const BUBBLE_CLASS = 'user-script-ai-chat-tweaks-userBubble';
+    const VARS_CLASS = 'user-script-ai-chat-tweaks-vars';
+    const ready = fetch('../ai-chat-tweaks.user.js')
+      .then((response) => response.text())
+      .then((code) => new Function('location', code)({ hostname: 'claude.ai' }));
+
+    const cases = [
+      ['默认宽度写在 :root 的变量上', async () => html.style.getPropertyValue('--user-script-ai-chat-tweaks'), '50vw'],
+      ['对话区宽度为 50vw', async () => width('column'), Math.round(innerWidth * 0.5)],
+      ['输入框与对话区等宽', async () => width('composer') === width('column'), true],
+      ['给官方元素打上自己的类名（宽度变量）', async () => $('column').classList.contains(VARS_CLASS) && document.documentElement.classList.contains(VARS_CLASS), true],
+      ['用户消息气泡被打上自己的类名', async () => $('user-bubble').classList.contains(BUBBLE_CLASS), true],
+      ['用户消息气泡的样式在我们的类上', async () => { const s = getComputedStyle($('user-bubble')); return [s.borderRadius, s.paddingLeft]; }, ['18px', '16px']],
+      ['气泡宽度为对话区宽度的 68%', async () => Math.round($('user-bubble').getBoundingClientRect().width), Math.round(innerWidth * 0.5 * 0.68)],
+      ['AI 回复不被改动', async () => $('ai-reply').className === '' && getComputedStyle($('ai-reply')).borderRadius === '0px', true],
+      ['后加入的用户消息同样打标记', async () => {
+        const el = document.createElement('div');
+        el.innerHTML = '<div><div class="cds-user-message-body">new</div></div>';
+        document.body.append(el);
+        await settle(300);
+        const ok = el.classList.contains(BUBBLE_CLASS);
+        el.remove();
+        return ok;
+      }, true],
+      ['默认气泡为紫罗兰渐变，三组预设都已注册', async () => [
+        getComputedStyle($('user-bubble')).backgroundImage.includes('rgb(139, 92, 246)'),
+        ['violet', 'rose', 'azure', 'amber', 'teal'].every((key) => GM_mock.menu.has(`bubble-${key}`)),
+        GM_mock.menu.get('bubble-violet').name.startsWith('✓'),
+      ], [true, true, true]],
+      ['选玫红：渐变即时切换并保存，勾选标记移动', async () => {
+        GM_mock.menu.get('bubble-rose').callback();
+        await settle();
+        return [
+          getComputedStyle($('user-bubble')).backgroundImage.includes('rgb(244, 63, 94)'),
+          GM_mock.values.get('bubble'),
+          GM_mock.menu.get('bubble-rose').name.startsWith('✓'),
+          GM_mock.menu.get('bubble-violet').name.startsWith('✓'),
+        ];
+      }, [true, 'rose', true, false]],
+      ['页面清掉 <html> 行内样式后，渐变也被补回', async () => {
+        html.removeAttribute('style');
+        await settle();
+        return getComputedStyle($('user-bubble')).backgroundImage.includes('rgb(244, 63, 94)');
+      }, true],
+      ['菜单命令已注册，标题带当前宽度', async () => /50vw/.test(menu().name), true],
+      ['通过菜单改为 900px', async () => {
+        window.prompt = () => '900px';
+        menu().callback();
+        await settle();
+        return [html.style.getPropertyValue('--user-script-ai-chat-tweaks'), width('column'), GM_mock.values.get('width')];
+      }, ['900px', 900, '900px']],
+      ['改完后菜单标题更新', async () => /900px/.test(menu().name), true],
+      ['非法输入被拒绝，宽度不变', async () => {
+        let alerted = false;
+        window.alert = () => { alerted = true; };
+        window.prompt = () => 'not-a-length';
+        menu().callback();
+        await settle();
+        return [alerted, width('column'), GM_mock.values.get('width')];
+      }, [true, 900, '900px']],
+      ['页面脚本清掉 <html> 的行内样式后，宽度被补回', async () => {
+        html.removeAttribute('style');
+        await settle();
+        return width('column');
+      }, 900],
+      ['留空恢复默认', async () => {
+        window.prompt = () => '   ';
+        menu().callback();
+        await settle();
+        return [html.style.getPropertyValue('--user-script-ai-chat-tweaks'), GM_mock.values.get('width')];
+      }, ['50vw', '50vw']],
+      ['取消对话框不改动', async () => {
+        window.prompt = () => null;
+        const before = GM_mock.callsOf('GM_setValue').length;
+        menu().callback();
+        await settle();
+        return GM_mock.callsOf('GM_setValue').length - before;
+      }, 0],
+    ];
+
+    $('run').addEventListener('click', async () => {
+      await ready;
+      await settle();
+      const tbody = $('results');
+      tbody.textContent = '';
+      let failed = 0;
+      for (const [name, run, expected] of cases) {
+        let actual;
+        try {
+          actual = await run();
+        } catch (err) {
+          actual = `Error: ${err.message}`;
+        }
+        const ok = JSON.stringify(actual) === JSON.stringify(expected);
+        if (!ok) failed += 1;
+        const row = tbody.insertRow();
+        row.insertCell().textContent = name;
+        row.insertCell().textContent = JSON.stringify(expected);
+        row.insertCell().textContent = JSON.stringify(actual);
+        const result = row.insertCell();
+        result.textContent = ok ? '通过' : '失败';
+        result.className = ok ? 'pass' : 'fail';
+      }
+      const summary = $('summary');
+      summary.textContent = failed ? `${failed} 项失败，共 ${cases.length} 项` : `全部通过，共 ${cases.length} 项`;
+      summary.className = failed ? 'fail' : 'pass';
+    });
+  </script>
+</body>
+</html>

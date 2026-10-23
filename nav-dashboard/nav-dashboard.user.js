@@ -1,8 +1,10 @@
 // ==UserScript==
 // @name         Nav Dashboard
+// @name:en      Nav Dashboard
 // @namespace    https://github.com/xianghongai
-// @version      1.0.0
+// @version      1.0.1
 // @description  Documentation sites list their components and APIs in a long, grouped sidebar that you have to scroll through. This opens a full-screen board that lays all the groups out side by side, so you can see the whole tech stack at a glance and jump to any page.
+// @description:en  Documentation sites list their components and APIs in a long, grouped sidebar that you have to scroll through. This opens a full-screen board that lays all the groups out side by side, so you can see the whole tech stack at a glance and jump to any page.
 // @description:zh-CN  技术文档网站的左侧导航分成一组组，需要上下滚动才能看全；打开全屏看板，把所有分组横向铺开，对整个技术栈一览无余，点击即可跳转。
 // @description:zh-TW  技術文件網站的左側導覽分成一組組，需要上下捲動才能看全；開啟全螢幕看板，把所有分組橫向鋪開，對整個技術棧一覽無遺，點擊即可跳轉。
 // @author       xianghongai <xianghongai@gmail.com>

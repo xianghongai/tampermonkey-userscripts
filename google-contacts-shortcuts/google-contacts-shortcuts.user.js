@@ -1,8 +1,10 @@
 // ==UserScript==
 // @name         Google Contacts: Shortcuts
+// @name:en      Google Contacts: Shortcuts
 // @namespace    https://github.com/xianghongai
-// @version      1.0.0
+// @version      1.0.1
 // @description  Keyboard shortcuts for Google Contacts, so opening a contact for editing and saving changes no longer means hunting for buttons with the mouse. For personal use.
+// @description:en  Keyboard shortcuts for Google Contacts, so opening a contact for editing and saving changes no longer means hunting for buttons with the mouse. For personal use.
 // @description:zh-CN  为 Google 通讯录添加快捷键，进入联系人编辑、保存修改不必再用鼠标找按钮；自用脚本。
 // @description:zh-TW  為 Google 通訊錄加入快捷鍵，進入聯絡人編輯、儲存修改不必再用滑鼠找按鈕；自用腳本。
 // @author       xianghongai <xianghongai@gmail.com>

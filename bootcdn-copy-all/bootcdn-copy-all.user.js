@@ -1,8 +1,10 @@
 // ==UserScript==
 // @name         BootCDN: Copy All
+// @name:en      BootCDN: Copy All
 // @namespace    https://github.com/xianghongai
-// @version      1.0.0
+// @version      1.0.1
 // @description  On BootCDN library pages, copy the links or <script>/<link> tags of all files currently shown in one click, following the selected version, file type and protocol.
+// @description:en  On BootCDN library pages, copy the links or <script>/<link> tags of all files currently shown in one click, following the selected version, file type and protocol.
 // @description:zh-CN  在 BootCDN 的库页面一键复制当前显示的全部文件链接或 <script>/<link> 标签，跟随所选的版本、文件类型与协议。
 // @description:zh-TW  在 BootCDN 的庫頁面一鍵複製目前顯示的全部檔案連結或 <script>/<link> 標籤，跟隨所選的版本、檔案類型與協定。
 // @author       xianghongai <xianghongai@gmail.com>

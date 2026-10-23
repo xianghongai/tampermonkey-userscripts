@@ -1,8 +1,10 @@
 // ==UserScript==
 // @name         Copy Anyway
+// @name:en      Copy Anyway
 // @namespace    https://github.com/xianghongai
-// @version      1.0.0
+// @version      1.0.1
 // @description  Select and copy text on pages that block it with styles or scripts, and stop sites from appending copyright notices to what you copy. Works on built-in sites, and can be switched on for any site from the menu.
+// @description:en  Select and copy text on pages that block it with styles or scripts, and stop sites from appending copyright notices to what you copy. Works on built-in sites, and can be switched on for any site from the menu.
 // @description:zh-CN  在用样式或脚本禁止选择、复制的页面上照常选择与复制文字，并阻止网站在复制内容后追加版权声明；内置常见网站，也可以通过菜单在任意网站开启。
 // @description:zh-TW  在用樣式或腳本禁止選取、複製的頁面上照常選取與複製文字，並阻止網站在複製內容後附加版權聲明；內建常見網站，也可以透過選單在任意網站開啟。
 // @author       xianghongai <xianghongai@gmail.com>

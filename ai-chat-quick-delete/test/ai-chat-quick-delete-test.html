@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Chat Quick Delete 测试页</title>
+  <!--
+    用法：用浏览器直接打开本文件（file://），不需要安装到 Tampermonkey。
+    脚本按域名选站点规则，file:// 页面没有域名，所以这里读出脚本源码，用伪造的 location（chat.deepseek.com）运行，
+    并在页面里搭一个按 DeepSeek 规则工作的迷你对话列表：「更多」菜单、删除项、确认框都是模拟的。
+    只验证图标注入、模拟点击流程与自动确认开关；各站点真实页面的选择器要到站点上手工确认。
+  -->
+  <style>
+    :root { color-scheme: light dark; }
+    body { margin: 0 auto; max-width: 960px; padding: 24px 16px; font: 14px/1.6 system-ui, sans-serif; }
+    h1 { font-size: 20px; }
+    h2 { margin-top: 32px; font-size: 16px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 4px 8px; border-bottom: 1px solid #8884; text-align: left; vertical-align: top; }
+    .pass { color: #1a7f37; }
+    .fail { color: #cf222e; font-weight: 600; }
+    #side { width: 260px; border: 1px solid #8886; border-radius: 6px; padding: 4px; }
+    #side a { display: flex; align-items: center; justify-content: space-between; height: 36px; padding: 0 8px; color: inherit; text-decoration: none; }
+    #side a:hover { background: #8883; }
+    #side [role="button"] { padding: 0 6px; cursor: pointer; }
+    .ds-dropdown-menu { position: fixed; top: 80px; left: 280px; background: Canvas; border: 1px solid #8886; }
+    .ds-dropdown-menu-option { padding: 4px 12px; cursor: pointer; }
+    .ds-modal-wrapper { position: fixed; top: 160px; left: 280px; background: Canvas; border: 1px solid #8886; padding: 12px; }
+  </style>
+</head>
+<body>
+  <h1>AI Chat Quick Delete 测试页</h1>
+
+  <h2>自动测试</h2>
+  <p><button id="run" type="button">运行自动测试</button> <span id="summary"></span></p>
+  <table>
+    <thead><tr><th>场景</th><th>期望</th><th>实际</th><th>结果</th></tr></thead>
+    <tbody id="results"></tbody>
+  </table>
+
+  <h2>模拟的对话列表</h2>
+  <p>鼠标移到列表项上，「更多」左边应出现删除图标。</p>
+  <div id="side"></div>
+
+  <script src="../../test/gm-mock.js" data-name="AI Chat Quick Delete (test page)"></script>
+  <script>
+    // ---------- 迷你站点：DeepSeek 的列表项、菜单、确认框结构 ----------
+    const $ = (id) => document.getElementById(id);
+    const settle = (ms = 400) => new Promise((resolve) => setTimeout(resolve, ms));
+    let deleted = [];
+
+    function addChat(id) {
+      const a = document.createElement('a');
+      a.href = `/a/chat/s/${id}`;
+      a.addEventListener('click', (event) => event.preventDefault());
+      a.append(id);
+      const more = document.createElement('div');
+      more.setAttribute('role', 'button');
+      more.textContent = '⋯';
+      more.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        openMenu(id);
+      });
+      a.append(more);
+      $('side').append(a);
+    }
+
+    function openMenu(id) {
+      document.querySelector('.ds-dropdown-menu')?.remove();
+      const menu = document.createElement('div');
+      menu.className = 'ds-dropdown-menu';
+      menu.setAttribute('role', 'menu');
+      menu.innerHTML = '<div class="ds-dropdown-menu-option">Rename</div><div class="ds-dropdown-menu-option ds-dropdown-menu-option--error">Delete</div>';
+      menu.querySelector('.ds-dropdown-menu-option--error').addEventListener('click', () => {
+        menu.remove();
+        openDialog(id);
+      });
+      document.body.append(menu);
+    }
+
+    function openDialog(id) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'ds-modal-wrapper';
+      wrapper.innerHTML = '<div class="ds-modal-content__footer"><div class="ds-button ds-button--outlined">Cancel</div> <div class="ds-button ds-button--error">Delete chat</div></div>';
+      const [cancel, ok] = wrapper.querySelectorAll('.ds-button');
+      cancel.addEventListener('click', () => wrapper.remove());
+      ok.addEventListener('click', () => {
+        wrapper.remove();
+        deleted.push(id);
+        [...$('side').children].find((a) => a.href.endsWith(id))?.remove();
+      });
+      document.body.append(wrapper);
+    }
+
+    ['alpha', 'beta', 'gamma', 'delta'].forEach(addChat);
+
+    // ---------- 用伪造的 location 运行脚本本体 ----------
+    const ready = fetch('../ai-chat-quick-delete.user.js')
+      .then((response) => response.text())
+      .then((code) => new Function('location', code)({ hostname: 'chat.deepseek.com' }));
+
+    // ---------- 自动测试 ----------
+    const icon = (id) => [...$('side').children].find((a) => a.href.endsWith(id))?.querySelector('.user-script-ai-chat-quick-delete-button');
+    const visible = (el) => getComputedStyle(el).display !== 'none';
+    const menuCommand = () => GM_mock.menu.get('auto-confirm');
+
+    const cases = [
+      ['每个列表项都有一个删除图标', async () => $('side').querySelectorAll('.user-script-ai-chat-quick-delete-button').length, 4],
+      ['图标是 Lucide 的 SVG', async () => icon('alpha').querySelectorAll('svg path').length, 5],
+      ['图标默认隐藏', async () => visible(icon('alpha')), false],
+      ['图标有无障碍名称', async () => icon('alpha').getAttribute('aria-label') !== null, true],
+      ['悬停时图标垫上与列表项相同的底色，各项一致', async () => {
+        const items = ['gamma', 'delta'].map((id) => icon(id).parentElement);
+        $('side').style.backgroundColor = 'rgb(240, 240, 240)';
+        for (const item of items) {
+          item.style.backgroundColor = 'rgba(0, 0, 0, 0.2)';
+          item.dispatchEvent(new PointerEvent('pointerenter'));
+        }
+        const backgrounds = ['gamma', 'delta'].map((id) => icon(id).style.backgroundImage);
+        for (const item of items) item.style.backgroundColor = '';
+        $('side').style.backgroundColor = '';
+        return [
+          backgrounds[0] === backgrounds[1],
+          backgrounds[0].replace(/\s+/g, ''),
+        ];
+      }, [true, 'linear-gradient(rgba(0,0,0,0.2),rgba(0,0,0,0.2)),linear-gradient(rgb(240,240,240),rgb(240,240,240))']],
+      ['已注册自动确认开关，默认为开', async () => menuCommand().name.endsWith('on') || menuCommand().name.endsWith('开'), true],
+      ['点击图标不触发列表项的链接', async () => {
+        const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+        icon('alpha').dispatchEvent(click);
+        await settle();
+        return click.defaultPrevented;
+      }, true],
+      ['自动确认：点击图标后对话被删除', async () => {
+        await settle();
+        return deleted.slice();
+      }, ['alpha']],
+      ['自动确认：列表中不再有该项', async () => !![...$('side').children].find((a) => a.href.endsWith('alpha')), false],
+      ['自动确认：弹窗不残留，忙碌标记已清除', async () => [
+        document.querySelectorAll('.ds-dropdown-menu, .ds-modal-wrapper').length,
+        document.documentElement.hasAttribute('data-user-script-ai-chat-quick-delete-busy'),
+      ], [0, false]],
+      ['后续新增的列表项也有图标', async () => {
+        addChat('epsilon');
+        await settle();
+        return !!icon('epsilon');
+      }, true],
+      ['关闭自动确认后，把确认框留给使用者', async () => {
+        menuCommand().callback();
+        icon('beta').click();
+        await settle(800);
+        return [deleted.includes('beta'), document.querySelectorAll('.ds-modal-wrapper').length];
+      }, [false, 1]],
+      ['关闭状态已写入存储，菜单名更新', async () => [GM_mock.values.get('autoConfirm'), /off|关/.test(menuCommand().name)], [false, true]],
+      ['留下的确认框没有被隐藏', async () => getComputedStyle(document.querySelector('.ds-modal-wrapper')).opacity, '1'],
+      ['再次切换回自动确认', async () => {
+        document.querySelector('.ds-modal-wrapper .ds-button').click();
+        menuCommand().callback();
+        return GM_mock.values.get('autoConfirm');
+      }, true],
+      ['菜单里找不到删除项时恢复现场并警告', async () => {
+        const warnings = [];
+        const warn = console.warn;
+        console.warn = (...args) => warnings.push(args.join(' '));
+        document.querySelector('#side a:nth-child(2) [role="button"]').addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          const menu = document.createElement('div');
+          menu.className = 'ds-dropdown-menu';
+          menu.setAttribute('role', 'menu');
+          document.body.append(menu);
+        }, { capture: true, once: true });
+        icon('gamma').click();
+        await settle(3500);
+        console.warn = warn;
+        document.querySelector('.ds-dropdown-menu')?.remove();
+        return [warnings.length, document.documentElement.hasAttribute('data-user-script-ai-chat-quick-delete-busy')];
+      }, [1, false]],
+    ];
+
+    $('run').addEventListener('click', async () => {
+      await ready;
+      await settle();
+      const tbody = $('results');
+      tbody.textContent = '';
+      let failed = 0;
+      for (const [name, run, expected] of cases) {
+        let actual;
+        try {
+          actual = await run();
+        } catch (err) {
+          actual = `Error: ${err.message}`;
+        }
+        const ok = JSON.stringify(actual) === JSON.stringify(expected);
+        if (!ok) failed += 1;
+        const row = tbody.insertRow();
+        row.insertCell().textContent = name;
+        row.insertCell().textContent = JSON.stringify(expected);
+        row.insertCell().textContent = JSON.stringify(actual);
+        const result = row.insertCell();
+        result.textContent = ok ? '通过' : '失败';
+        result.className = ok ? 'pass' : 'fail';
+      }
+      const summary = $('summary');
+      summary.textContent = failed ? `${failed} 项失败，共 ${cases.length} 项` : `全部通过，共 ${cases.length} 项`;
+      summary.className = failed ? 'fail' : 'pass';
+    });
+  </script>
+</body>
+</html>

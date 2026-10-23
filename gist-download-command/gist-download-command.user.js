@@ -1,8 +1,10 @@
 // ==UserScript==
 // @name         Gist: Download Commands
+// @name:en      Gist: Download Commands
 // @namespace    https://github.com/xianghongai
-// @version      1.0.0
+// @version      1.0.1
 // @description  Gist detail page: copy a GitHub CLI or curl command that downloads each file. When the Gist has a Cairn manifest, the command writes to the path it declares.
+// @description:en  Gist detail page: copy a GitHub CLI or curl command that downloads each file. When the Gist has a Cairn manifest, the command writes to the path it declares.
 // @description:zh-CN  Gist 详情页：为每个文件复制 GitHub CLI 或 curl 下载命令；Gist 带有 Cairn 清单时，命令写入清单声明的路径。
 // @description:zh-TW  Gist 詳情頁：為每個檔案複製 GitHub CLI 或 curl 下載指令；Gist 帶有 Cairn 清單時，指令寫入清單宣告的路徑。
 // @author       xianghongai <xianghongai@gmail.com>

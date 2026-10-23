@@ -1,8 +1,10 @@
 // ==UserScript==
 // @name         No-Translate Zones
+// @name:en      No-Translate Zones
 // @namespace    https://github.com/xianghongai
-// @version      1.1.0
+// @version      1.1.1
 // @description  Mark code blocks and other parts of a page chosen by rules as "do not translate" (translate="no"), so Google Translate, the browser's page translation and any other translator that honors the standard keep them in the original language. Rules apply to all sites, a domain, or a specific path.
+// @description:en  Mark code blocks and other parts of a page chosen by rules as "do not translate" (translate="no"), so Google Translate, the browser's page translation and any other translator that honors the standard keep them in the original language. Rules apply to all sites, a domain, or a specific path.
 // @description:zh-CN  把代码块及按规则指定的内容标记为不翻译（translate="no"），谷歌翻译、浏览器整页翻译等遵循该标准的翻译工具都会保留原文；规则可对所有网站、某个域名或具体路径生效。
 // @description:zh-TW  把程式碼區塊及依規則指定的內容標記為不翻譯（translate="no"），Google 翻譯、瀏覽器整頁翻譯等遵循該標準的翻譯工具都會保留原文；規則可對所有網站、某個網域或特定路徑生效。
 // @author       xianghongai <xianghongai@gmail.com>

@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GitHub &amp; Gist: Collapse &amp; Copy 测试页</title>
+  <!--
+    用法：先在本目录的上两级启动静态服务（例如 python3 -m http.server），再用浏览器打开本页；不需要安装到 Tampermonkey。
+    脚本按域名区分 Gist 与 GitHub，页面没有对应域名，所以这里读出脚本源码，用伪造的 location（gist.github.com）运行。
+    迷你页面模仿 Gist 详情页：描述行、两个文件、一条评论；加载前预置“默认折叠”为开启。
+    Gist 真实页面的选择器要到站点上手工确认。
+  -->
+  <style>
+    :root { color-scheme: light dark; }
+    body { margin: 0; padding: 24px 16px; font: 14px/1.6 system-ui, sans-serif; }
+    h1 { font-size: 20px; }
+    h2 { margin-top: 32px; font-size: 16px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 4px 8px; border-bottom: 1px solid #8884; text-align: left; vertical-align: top; }
+    .pass { color: #1a7f37; }
+    .fail { color: #cf222e; font-weight: 600; }
+    .file, .timeline-comment { margin: 8px 0; border: 1px solid #8886; }
+    .file-header, .timeline-comment-header { display: flex; justify-content: space-between; padding: 4px 8px; background: #8882; }
+  </style>
+</head>
+<body>
+  <h1>GitHub &amp; Gist: Collapse &amp; Copy 测试页</h1>
+
+  <h2>自动测试</h2>
+  <p><button id="run" type="button">运行自动测试</button> <span id="summary"></span></p>
+  <table>
+    <thead><tr><th>场景</th><th>期望</th><th>实际</th><th>结果</th></tr></thead>
+    <tbody id="results"></tbody>
+  </table>
+
+  <h2>模拟的 Gist 详情页</h2>
+  <div itemprop="about">Sample gist</div>
+  <div id="files">
+    <div class="file" id="f1">
+      <div class="file-header"><a><strong class="gist-blob-name">a.js</strong></a><div class="file-actions"><a href="https://gist.githubusercontent.com/someone/0123456789abcdef0123/raw/a.js">Raw</a></div></div>
+      <div class="blob">console.log('a');</div>
+    </div>
+    <div class="file" id="f2">
+      <div class="file-header"><a><strong class="gist-blob-name">b.js</strong></a><div class="file-actions"><a href="https://gist.githubusercontent.com/someone/0123456789abcdef0123/raw/b.js">Raw</a></div></div>
+      <div class="blob">console.log('b');</div>
+    </div>
+  </div>
+  <div class="timeline-comment" id="c1">
+    <div class="timeline-comment-header"><span>someone commented</span><div class="timeline-comment-actions"></div></div>
+    <div class="comment-body">评论正文，不应被默认折叠。</div>
+  </div>
+
+  <script src="../../test/gm-mock.js" data-name="GitHub & Gist: Collapse & Copy (test page)"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const settle = (ms = 100) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    const P = 'user-script-github-gist-collapse-copy';
+    const COLLAPSED = `data-${P}-collapsed`;
+    const menu = () => GM_mock.menu.get('collapse-by-default');
+    const toggleAll = () => document.querySelector(`.${P}-toggle-all`);
+    const toggleOf = (file) => file.querySelector(`.${P}-toggle`);
+    const hidden = (el) => getComputedStyle(el).display === 'none';
+
+    // 模拟使用者之前已在菜单中开启“默认折叠”
+    GM_mock.values.set('collapseFilesByDefault', true);
+    GM_mock.intercept((details) =>
+      details.url.endsWith('/raw/a.js') ? { status: 200, responseText: "console.log('a');\n" } : undefined,
+    );
+
+    const ready = fetch('../github-gist-collapse-copy.user.js')
+      .then((response) => response.text())
+      .then((code) =>
+        new Function('location', code)({ hostname: 'gist.github.com', pathname: '/someone/0123456789abcdef0123' }),
+      );
+
+    const cases = [
+      ['开启时文件默认折叠，代码隐藏', async () =>
+        [$('f1').hasAttribute(COLLAPSED), $('f2').hasAttribute(COLLAPSED), hidden($('f1').querySelector('.blob'))],
+        [true, true, true]],
+      ['文件头仍可见', async () => hidden($('f1').querySelector('.file-header')), false],
+      ['评论不受默认折叠影响', async () => [$('c1').hasAttribute(COLLAPSED), hidden($('c1').querySelector('.comment-body'))], [false, false]],
+      ['文件折叠按钮显示为“展开”', async () => [toggleOf($('f1')).getAttribute('aria-expanded'), toggleOf($('f1')).title], ['false', 'Expand']],
+      ['“全部”按钮显示为“全部展开”', async () => toggleAll().title, 'Expand all files'],
+      ['菜单标题显示当前状态', async () => menu().name, 'Collapse files by default: On'],
+      ['单独展开一个文件后，“全部”按钮改为“全部折叠”', async () => {
+        toggleOf($('f1')).click();
+        return [$('f1').hasAttribute(COLLAPSED), hidden($('f1').querySelector('.blob')), toggleAll().title];
+      }, [false, false, 'Collapse all files']],
+      ['点菜单关闭：保存并原地更新标题，当前页不变', async () => {
+        const size = GM_mock.menu.size;
+        menu().callback();
+        await settle();
+        return [GM_mock.values.get('collapseFilesByDefault'), menu().name, GM_mock.menu.size === size, $('f2').hasAttribute(COLLAPSED)];
+      }, [false, 'Collapse files by default: Off', true, true]],
+      ['关闭后新加载的文件保持展开', async () => {
+        const file = $('f2').cloneNode(true);
+        file.id = 'f3';
+        file.removeAttribute(COLLAPSED);
+        file.querySelectorAll(`[class*="${P}"]`).forEach((el) => el.remove());
+        $('files').append(file);
+        await settle();
+        return [Boolean(toggleOf(file)), file.hasAttribute(COLLAPSED)];
+      }, [true, false]],
+      ['再次开启后新加载的文件默认折叠', async () => {
+        menu().callback();
+        const file = $('f3').cloneNode(true);
+        file.id = 'f4';
+        file.querySelectorAll(`[class*="${P}"]`).forEach((el) => el.remove());
+        $('files').append(file);
+        await settle();
+        return [menu().name, file.hasAttribute(COLLAPSED), $('f3').hasAttribute(COLLAPSED)];
+      }, ['Collapse files by default: On', true, false]],
+      ['复制 Raw 内容，状态属性带脚本前缀', async () => {
+        const btn = $('f1').querySelector(`.file-actions .${P}-copy`);
+        btn.click();
+        await settle();
+        return [GM_mock.lastCopied, btn.getAttribute(`data-${P}-state`)];
+      }, ["console.log('a');\n", 'done']],
+      ['注入的元素都使用脚本前缀', async () =>
+        [...document.querySelectorAll('button:not(#run)')].every((btn) => btn.classList.contains(`${P}-btn`)) &&
+          !document.querySelector('[class*="ghc-"], [data-ghc-collapsed], [data-ghc-header]'),
+        true],
+    ];
+
+    $('run').addEventListener('click', async () => {
+      await ready;
+      await settle();
+      const tbody = $('results');
+      tbody.textContent = '';
+      let failed = 0;
+      for (const [name, run, expected] of cases) {
+        let actual;
+        try {
+          actual = await run();
+        } catch (err) {
+          actual = `Error: ${err.message}`;
+        }
+        const ok = JSON.stringify(actual) === JSON.stringify(expected);
+        if (!ok) failed += 1;
+        const row = tbody.insertRow();
+        row.insertCell().textContent = name;
+        row.insertCell().textContent = JSON.stringify(expected);
+        row.insertCell().textContent = JSON.stringify(actual);
+        const result = row.insertCell();
+        result.textContent = ok ? '通过' : '失败';
+        result.className = ok ? 'pass' : 'fail';
+      }
+      const summary = $('summary');
+      summary.textContent = failed ? `${failed} 项失败，共 ${cases.length} 项` : `全部通过，共 ${cases.length} 项`;
+      summary.className = failed ? 'fail' : 'pass';
+    });
+  </script>
+</body>
+</html>

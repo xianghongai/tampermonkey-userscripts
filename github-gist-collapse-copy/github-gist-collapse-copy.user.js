@@ -1,10 +1,12 @@
 // ==UserScript==
 // @name         GitHub & Gist: Collapse & Copy
+// @name:en      GitHub & Gist: Collapse & Copy
 // @namespace    https://github.com/xianghongai
-// @version      1.0.2
-// @description  Gist list: hides code previews. Gist files: collapse one by one or all at once, copy raw content. Copy Gist IDs, file names and repository names. Issue/PR/Discussion comments: collapse and copy the Markdown source.
-// @description:zh-CN  Gist 列表隐藏代码预览；Gist 文件可单独或一键全部折叠，可复制 Raw 内容；可复制 Gist ID、文件名与仓库名；Issue/PR/Discussion 评论可折叠，可复制 Markdown 原文。
-// @description:zh-TW  Gist 列表隱藏程式碼預覽；Gist 檔案可單獨或一鍵全部摺疊，可複製 Raw 內容；可複製 Gist ID、檔案名稱與儲存庫名稱；Issue/PR/Discussion 留言可摺疊，可複製 Markdown 原文。
+// @version      1.1.0
+// @description  Gist list: hides code previews. Gist files: collapse one by one or all at once, optionally collapsed by default, copy raw content. Copy Gist IDs, file names and repository names. Issue/PR/Discussion comments: collapse and copy the Markdown source.
+// @description:en  Gist list: hides code previews. Gist files: collapse one by one or all at once, optionally collapsed by default, copy raw content. Copy Gist IDs, file names and repository names. Issue/PR/Discussion comments: collapse and copy the Markdown source.
+// @description:zh-CN  Gist 列表隐藏代码预览；Gist 文件可单独或一键全部折叠，可设为默认折叠，可复制 Raw 内容；可复制 Gist ID、文件名与仓库名；Issue/PR/Discussion 评论可折叠，可复制 Markdown 原文。
+// @description:zh-TW  Gist 列表隱藏程式碼預覽；Gist 檔案可單獨或一鍵全部摺疊，可設為預設摺疊，可複製 Raw 內容；可複製 Gist ID、檔案名稱與儲存庫名稱；Issue/PR/Discussion 留言可摺疊，可複製 Markdown 原文。
 // @author       xianghongai <xianghongai@gmail.com>
 // @license      MIT
 // @homepageURL  https://github.com/xianghongai/tampermonkey-userscripts
@@ -30,8 +32,18 @@ console.log(GM_info.script.name);
 
   const IS_GIST = location.hostname === 'gist.github.com';
 
+  const P = 'user-script-github-gist-collapse-copy';
+  const COLLAPSED = `data-${P}-collapsed`;
+  const HEADER = `data-${P}-header`;
+  const DONE = `data-${P}-done`;
+  // data-user-script-github-gist-collapse-copy-* 对应的 dataset 键
+  const datasetKey = (name) => `${P}-${name}`.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+  const stateKey = datasetKey('state');
+  const iconKey = datasetKey('icon');
+  const labelKey = datasetKey('label');
+
   // ---------- 样式 ----------
-  // 折叠：在容器上打 data-ghc-collapsed，隐藏除头部以外的所有子元素。
+  // 折叠：在容器上打 COLLAPSED 属性，隐藏除头部以外的所有子元素。
   // 用 data 属性而不是 class，避免 React 重渲染时覆盖 className。
   const style = document.createElement('style');
   style.textContent = `
@@ -47,11 +59,11 @@ console.log(GM_info.script.name);
       border-top: 1px solid var(--borderColor-muted, #d1d9e0b3);
     }
 
-    [data-ghc-collapsed] > :not([data-ghc-header]) {
+    [data-${P}-collapsed] > :not([data-${P}-header]) {
       display: none !important;
     }
 
-    .ghc-btn {
+    .${P}-btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -65,69 +77,69 @@ console.log(GM_info.script.name);
       color: var(--fgColor-muted, #59636e);
       cursor: pointer;
     }
-    .ghc-btn:hover {
+    .${P}-btn:hover {
       background: var(--bgColor-neutral-muted, #818b981f);
       color: var(--fgColor-default, #1f2328);
     }
-    .ghc-btn:focus-visible {
+    .${P}-btn:focus-visible {
       outline: 2px solid var(--focus-outlineColor, #0969da);
       outline-offset: -2px;
     }
-    .ghc-toggle svg {
+    .${P}-toggle svg {
       transition: transform .15s ease;
     }
-    .ghc-toggle[aria-expanded="false"] svg {
+    .${P}-toggle[aria-expanded="false"] svg {
       transform: rotate(-90deg);
     }
-    .ghc-copy[data-state="done"] {
+    .${P}-copy[data-${P}-state="done"] {
       color: var(--fgColor-success, #1a7f37);
     }
-    .ghc-copy[data-state="error"] {
+    .${P}-copy[data-${P}-state="error"] {
       color: var(--fgColor-danger, #d1242f);
     }
-    .ghc-copy[data-state="busy"] {
+    .${P}-copy[data-${P}-state="busy"] {
       cursor: progress;
     }
     /* 请求中：省略号三个点依次闪烁 */
-    .ghc-copy[data-state="busy"] circle {
-      animation: ghc-dot 1s ease-in-out infinite;
+    .${P}-copy[data-${P}-state="busy"] circle {
+      animation: ${P}-dot 1s ease-in-out infinite;
     }
-    .ghc-copy[data-state="busy"] circle:nth-child(2) {
+    .${P}-copy[data-${P}-state="busy"] circle:nth-child(2) {
       animation-delay: .2s;
     }
-    .ghc-copy[data-state="busy"] circle:nth-child(3) {
+    .${P}-copy[data-${P}-state="busy"] circle:nth-child(3) {
       animation-delay: .4s;
     }
-    @keyframes ghc-dot {
+    @keyframes ${P}-dot {
       0%, 80%, 100% { opacity: .2; }
       40% { opacity: 1; }
     }
     /* Gist 描述行：放“全部折叠/展开”按钮 */
-    [itemprop="about"]:has(> .ghc-toggle-all) {
+    [itemprop="about"]:has(> .${P}-toggle-all) {
       display: flex;
       align-items: center;
       gap: 4px;
       margin-left: -6px;
     }
     /* Gist 文件头：和 Raw 按钮同高同风格 */
-    .file-actions .ghc-btn {
+    .file-actions .${P}-btn {
       margin-right: 4px;
       vertical-align: middle;
     }
     /* 行内小号复制按钮：Gist 列表标题、文件名旁。弱化显示，悬停时才清晰 */
-    .ghc-btn.ghc-inline {
+    .${P}-btn.${P}-inline {
       width: 20px;
       height: 20px;
       margin-left: 4px;
       vertical-align: middle;
       opacity: .5;
     }
-    .ghc-btn.ghc-inline:hover,
-    .ghc-btn.ghc-inline:focus-visible,
-    .ghc-btn.ghc-inline[data-state] {
+    .${P}-btn.${P}-inline:hover,
+    .${P}-btn.${P}-inline:focus-visible,
+    .${P}-btn.${P}-inline[data-${P}-state] {
       opacity: 1;
     }
-    .ghc-inline svg {
+    .${P}-inline svg {
       width: 14px;
       height: 14px;
     }
@@ -203,13 +215,13 @@ console.log(GM_info.script.name);
   function createToggle(container) {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'ghc-btn ghc-toggle';
+    btn.className = `${P}-btn ${P}-toggle`;
     btn.innerHTML = ICONS.chevronDown;
-    syncToggle(btn, !container.hasAttribute('data-ghc-collapsed'));
+    syncToggle(btn, !container.hasAttribute(COLLAPSED));
     btn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      const expanded = container.toggleAttribute('data-ghc-collapsed') === false;
+      const expanded = container.toggleAttribute(COLLAPSED) === false;
       syncToggle(btn, expanded);
       if (IS_GIST) syncToggleAll();
     });
@@ -242,17 +254,17 @@ console.log(GM_info.script.name);
   function createCopyButton(getText, label, icon = 'copy') {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'ghc-btn ghc-copy';
+    btn.className = `${P}-btn ${P}-copy`;
     btn.innerHTML = ICONS[icon];
-    btn.dataset.icon = icon;
+    btn.dataset[iconKey] = icon;
     btn.title = label;
-    btn.dataset.label = label;
+    btn.dataset[labelKey] = label;
     btn.setAttribute('aria-label', label);
     btn.addEventListener('click', async (e) => {
       e.preventDefault();
       e.stopPropagation();
-      if (btn.dataset.state === 'busy') return;
-      btn.dataset.state = 'busy';
+      if (btn.dataset[stateKey] === 'busy') return;
+      btn.dataset[stateKey] = 'busy';
       // 需要网络请求的复制（Raw、评论原文）会停留在这个状态，本地取值的会立即被结果覆盖
       btn.innerHTML = ICONS.ellipsis;
       try {
@@ -266,14 +278,14 @@ console.log(GM_info.script.name);
   }
 
   function flash(btn, state, icon, title) {
-    btn.dataset.state = state;
+    btn.dataset[stateKey] = state;
     btn.innerHTML = icon;
     btn.title = title;
     // 失败时多停留一会儿，方便看清原因
     setTimeout(() => {
-      delete btn.dataset.state;
-      btn.innerHTML = ICONS[btn.dataset.icon];
-      btn.title = btn.dataset.label;
+      delete btn.dataset[stateKey];
+      btn.innerHTML = ICONS[btn.dataset[iconKey]];
+      btn.title = btn.dataset[labelKey];
     }, state === 'error' ? 4000 : 1500);
   }
 
@@ -281,7 +293,7 @@ console.log(GM_info.script.name);
   // 页面里隐藏的 textarea 并非总存在，大文件在 DOM 中也可能被截断，所以请求 Raw 链接。
   function scanGistRaw() {
     for (const raw of document.querySelectorAll('.file > .file-header .file-actions a[href*="/raw/"]')) {
-      if (raw.previousElementSibling?.classList.contains('ghc-copy')) continue;
+      if (raw.previousElementSibling?.classList.contains(`${P}-copy`)) continue;
       const getText = async () => {
         const res = await gmRequest(raw.href);
         if (res.status < 200 || res.status >= 300) throw new Error(`HTTP ${res.status}`);
@@ -374,9 +386,9 @@ console.log(GM_info.script.name);
   const gistFiles = () => [...document.querySelectorAll('.file:has(> .file-header)')];
 
   function syncToggleAll() {
-    const btn = document.querySelector('.ghc-toggle-all');
+    const btn = document.querySelector(`.${P}-toggle-all`);
     if (!btn) return;
-    const anyExpanded = gistFiles().some((f) => !f.hasAttribute('data-ghc-collapsed'));
+    const anyExpanded = gistFiles().some((f) => !f.hasAttribute(COLLAPSED));
     btn.innerHTML = anyExpanded ? ICONS.chevronsDownUp : ICONS.chevronsUpDown;
     btn.title = anyExpanded ? 'Collapse all files' : 'Expand all files';
     btn.setAttribute('aria-label', btn.title);
@@ -385,23 +397,41 @@ console.log(GM_info.script.name);
 
   function scanGistToggleAll() {
     const about = document.querySelector('[itemprop="about"]');
-    if (!about || about.querySelector(':scope > .ghc-toggle-all') || !gistFiles().length) return;
+    if (!about || about.querySelector(`:scope > .${P}-toggle-all`) || !gistFiles().length) return;
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'ghc-btn ghc-toggle-all';
+    btn.className = `${P}-btn ${P}-toggle-all`;
     btn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
       const collapse = btn.getAttribute('aria-expanded') === 'true';
       for (const file of gistFiles()) {
-        file.toggleAttribute('data-ghc-collapsed', collapse);
-        const toggle = file.querySelector(':scope > .file-header .ghc-toggle');
+        file.toggleAttribute(COLLAPSED, collapse);
+        const toggle = file.querySelector(`:scope > .file-header .${P}-toggle`);
         if (toggle) syncToggle(toggle, !collapse);
       }
       syncToggleAll();
     });
     about.prepend(btn);
     syncToggleAll();
+  }
+
+  // ---------- Gist：默认折叠全部文件（可选）----------
+  // 开关放在 Tampermonkey 菜单，菜单文字显示当前状态；只影响之后打开的 Gist，不改动当前页。
+  const COLLAPSE_BY_DEFAULT = 'collapseFilesByDefault';
+
+  if (IS_GIST) {
+    const registerCollapseMenu = () =>
+      GM_registerMenuCommand(
+        `Collapse files by default: ${GM_getValue(COLLAPSE_BY_DEFAULT, false) ? 'On' : 'Off'}`,
+        () => {
+          GM_setValue(COLLAPSE_BY_DEFAULT, !GM_getValue(COLLAPSE_BY_DEFAULT, false));
+          registerCollapseMenu();
+        },
+        // 同一 id 重复注册即原地更新菜单文字
+        { id: 'collapse-by-default', autoClose: false },
+      );
+    registerCollapseMenu();
   }
 
   // ---------- Gist 列表：描述作为标题链接（新标签页打开）----------
@@ -413,8 +443,8 @@ console.log(GM_info.script.name);
     for (const strong of document.querySelectorAll('.gist-snippet a > strong.css-truncate-target')) {
       const link = strong.parentElement;
       const line = link.parentElement;
-      if (line.hasAttribute('data-ghc-done')) continue;
-      line.setAttribute('data-ghc-done', '');
+      if (line.hasAttribute(DONE)) continue;
+      line.setAttribute(DONE, '');
 
       const author = line.querySelector(':scope > a[data-hovercard-type="user"]');
       if (author && pageOwner && author.getAttribute('href').toLowerCase() === `/${pageOwner}`) {
@@ -443,7 +473,7 @@ console.log(GM_info.script.name);
   // ---------- 复制 ID / 名称 ----------
   function createInlineCopy(getText, label, icon) {
     const btn = createCopyButton(async () => getText(), label, icon);
-    btn.classList.add('ghc-inline');
+    btn.classList.add(`${P}-inline`);
     return btn;
   }
 
@@ -455,7 +485,7 @@ console.log(GM_info.script.name);
   // Gist 详情页：描述行 [itemprop="about"] 右侧复制 Gist ID，样式同文件名旁的复制图标
   function scanGistAboutId() {
     const about = document.querySelector('[itemprop="about"]');
-    if (!about || !gistIdFromPath(location.pathname) || about.querySelector('.ghc-copy')) return;
+    if (!about || !gistIdFromPath(location.pathname) || about.querySelector(`.${P}-copy`)) return;
     about.append(createInlineCopy(() => gistIdFromPath(location.pathname), 'Copy Gist ID'));
   }
 
@@ -463,7 +493,7 @@ console.log(GM_info.script.name);
   function scanGistFileNames() {
     for (const name of document.querySelectorAll('.file > .file-header .gist-blob-name')) {
       const anchor = name.closest('a') || name;
-      if (anchor.nextElementSibling?.classList.contains('ghc-copy')) continue;
+      if (anchor.nextElementSibling?.classList.contains(`${P}-copy`)) continue;
       anchor.after(createInlineCopy(() => name.textContent.trim(), 'Copy file name'));
     }
   }
@@ -473,7 +503,7 @@ console.log(GM_info.script.name);
   // 标题只在仓库页出现，仓库名直接取 URL 前两段
   function scanRepoTitle() {
     const title = document.querySelector('#repo-title-component > div');
-    if (!title || title.querySelector('.ghc-copy')) return;
+    if (!title || title.querySelector(`.${P}-copy`)) return;
     const btn = createInlineCopy(
       () => location.pathname.split('/').filter(Boolean).slice(0, 2).join('/'),
       'Copy repository name',
@@ -495,28 +525,33 @@ console.log(GM_info.script.name);
     const issuePage = IS_GIST ? null : parseIssuePage();
     // 仓库下 /owner/repo/discussions/1 与组织下 /orgs/x/discussions/1 都算
     const isDiscussion = !IS_GIST && /\/discussions\/\d+/.test(location.pathname);
+    const collapseFiles = IS_GIST && GM_getValue(COLLAPSE_BY_DEFAULT, false);
     for (const find of finders) {
       for (const [header, slot] of find()) {
         const container = header.parentElement;
         if (!slot || !container) continue;
         // React 重渲染可能移除按钮，所以以“按钮是否存在”判断，而不是只看标记
-        let toggle = header.querySelector('.ghc-toggle');
+        let toggle = header.querySelector(`.${P}-toggle`);
         if (!toggle) {
-          header.setAttribute('data-ghc-header', '');
+          header.setAttribute(HEADER, '');
+          // 首次注入按钮时应用默认折叠；Gist 评论也走这里，只处理文件
+          if (collapseFiles && container.matches('.file')) container.setAttribute(COLLAPSED, '');
           toggle = createToggle(container);
           slot.prepend(toggle);
         }
-        if (issuePage && !header.querySelector('.ghc-copy')) {
+        if (issuePage && !header.querySelector(`.${P}-copy`)) {
           const path = commentApiPath(header, issuePage);
           if (path) toggle.after(createCopyButton(() => fetchCommentBody(path), 'Copy Markdown'));
         }
-        if (isDiscussion && !header.querySelector('.ghc-copy')) {
+        if (isDiscussion && !header.querySelector(`.${P}-copy`)) {
           // 回复嵌在父评论内部，最近的 [data-gid] 祖先就是它自己
           const id = header.closest('[data-gid]')?.dataset.gid;
           if (id) toggle.after(createCopyButton(() => fetchDiscussionBody(id), 'Copy Markdown'));
         }
       }
     }
+    // 默认折叠发生在“全部折叠/展开”按钮创建之后，这里再同步一次它的状态
+    if (IS_GIST) syncToggleAll();
   }
 
   // GitHub 是 Turbo + React 混合渲染，评论会懒加载/分页加载，统一用 MutationObserver 兜底

@@ -5,7 +5,7 @@
 ## 功能
 
 - **Gist 列表**：隐藏代码预览，列表更紧凑；标题旁一键复制 Gist ID
-- **Gist 详情页**：文件可单独折叠，也可一键全部折叠或展开；一键复制文件的 Raw 内容；描述旁一键复制 Gist ID，文件名旁一键复制文件名
+- **Gist 详情页**：文件可单独折叠，也可一键全部折叠或展开；可在 Tampermonkey 菜单中开启 **Collapse files by default**，打开 Gist 时文件默认全部折叠；一键复制文件的 Raw 内容；描述旁一键复制 Gist ID，文件名旁一键复制文件名
 - **仓库页**：仓库名称右侧一键复制 `owner/repo`
 - **Issue / PR / Discussion 评论**：评论可折叠；一键复制评论的 Markdown 原文
 

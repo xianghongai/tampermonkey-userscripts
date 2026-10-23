@@ -33,8 +33,8 @@ README 给使用者看，只讲用途，不讲技术实现。
 
 ## 脚本约定
 
-- 只写一个默认 `@name`（英文），不加 `@name:xx` 本地化变体。产品名是脚本的标识，不随使用者的浏览器语言变化。
-- `@description` 只写三种：默认（英文）、`@description:zh-CN`、`@description:zh-TW`。默认即英文，不再重复写 `@description:en`。
+- 默认 `@name` 用英文，并写一行与默认值完全相同的 `@name:en`：Greasy Fork 提供英文 Additional info 时，要求脚本同时带有 `@name:en` 与 `@description:en`。除此之外不加其他 `@name:xx` 本地化变体，产品名不随使用者的浏览器语言变化。
+- `@description` 写四种：默认（英文）、`@description:en`、`@description:zh-CN`、`@description:zh-TW`。`@description:en` 与默认英文描述完全相同。
 - 元数据块之后的第一条语句固定为 `console.log(GM_info.script.name);`，前后各空一行，让使用者能在 Console 中确认脚本已加载。这一行只输出脚本名，不放进函数或条件分支，确保脚本一加载就执行。
 - `@author`、`@namespace`、`@homepageURL`、`@supportURL` 与仓库内已有脚本保持一致，新增脚本照抄现有写法。这些是开发者选定公开的联系方式与仓库地址，不从 `git config`、浏览器登录账号或系统环境推断；已有脚本之间不一致时，先问开发者。
   `@namespace` 与 `@name` 一起决定脚本身份，已发布的脚本不改，否则使用者会装成另一个脚本。

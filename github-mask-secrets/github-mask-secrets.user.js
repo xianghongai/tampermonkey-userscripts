@@ -1,8 +1,10 @@
 // ==UserScript==
 // @name         GitHub & Gist: Mask Secrets
+// @name:en      GitHub & Gist: Mask Secrets
 // @namespace    https://github.com/xianghongai
-// @version      1.0.1
+// @version      1.0.2
 // @description  Keeps secrets from leaking when you share your screen in an online meeting or select and copy code by hand: on every GitHub repo and gist (or only the accounts you choose), values of secret-looking keys (TOKEN, KEY, SECRET, PASSWORD, CREDENTIAL…) are shown and copied as first4***last4. Raw links, copy buttons and clone still return the real value.
+// @description:en  Keeps secrets from leaking when you share your screen in an online meeting or select and copy code by hand: on every GitHub repo and gist (or only the accounts you choose), values of secret-looking keys (TOKEN, KEY, SECRET, PASSWORD, CREDENTIAL…) are shown and copied as first4***last4. Raw links, copy buttons and clone still return the real value.
 // @description:zh-CN  防止在线会议共享屏幕或用鼠标选中复制代码时不小心泄露凭据：在所有 GitHub 仓库与 Gist 上（也可只限指定账号），敏感键（TOKEN、KEY、SECRET、PASSWORD、CREDENTIAL 等）的值在显示和选中复制时都遮盖为「前4位***后4位」；Raw 链接、复制按钮与克隆拿到的仍是真值。
 // @description:zh-TW  防止線上會議分享螢幕或用滑鼠選取複製程式碼時不小心洩漏憑證：在所有 GitHub 儲存庫與 Gist 上（也可只限指定帳號），敏感鍵（TOKEN、KEY、SECRET、PASSWORD、CREDENTIAL 等）的值在顯示和選取複製時都遮蓋為「前4位***後4位」；Raw 連結、複製按鈕與 clone 取得的仍是真值。
 // @author       xianghongai <xianghongai@gmail.com>

@@ -1,8 +1,10 @@
 // ==UserScript==
 // @name         Copy it 🚀
+// @name:en      Copy it 🚀
 // @namespace    https://github.com/xianghongai
-// @version      1.6.0
+// @version      1.5.3
 // @description  Alt+click any element to copy its text. Add modifier keys to copy it as snake_case, kebab-case, camelCase or PascalCase, or to copy its title.
+// @description:en  Alt+click any element to copy its text. Add modifier keys to copy it as snake_case, kebab-case, camelCase or PascalCase, or to copy its title.
 // @description:zh-CN  按住 Alt 点击任意元素复制其文字；配合其他按键可复制为 snake_case、kebab-case、camelCase、PascalCase，或复制 title 提示文字。
 // @description:zh-TW  按住 Alt 點擊任意元素複製其文字；搭配其他按鍵可複製為 snake_case、kebab-case、camelCase、PascalCase，或複製 title 提示文字。
 // @author       xianghongai <xianghongai@gmail.com>
@@ -53,6 +55,16 @@ console.log(GM_info.script.name);
 
   // 返回 null 表示这次点击与本脚本无关
   // 右手区（右 Alt）负责驼峰类命名，左手区（左 Alt）负责 - 与 _ 分隔的命名
+  //
+  // Shortcut                     Copies
+  // Alt + Click                  Element text
+  // Alt + Shift + Click          kebab-case
+  // Alt + Ctrl + Click           snake_case
+  // Right Alt + Click            camelCase
+  // Right Alt + Shift + Click    PascalCase
+  // Alt + Shift + Ctrl + Click   Element title
+  //
+  // macOS: Alt = Option, Ctrl = Command
   function resolveAction(event) {
     if (event.button !== 0) return null;
     if (rightAltDown) return event.shiftKey ? 'pascal' : 'camel';
