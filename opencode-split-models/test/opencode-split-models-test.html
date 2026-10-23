@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenCode: Split Models 测试页</title>
+  <!--
+    用法：用浏览器直接打开本页，不需要安装到 Tampermonkey。
+    页面里的表格模仿控制台的 Models 页面：表头七列，模型行的最后一列是 role="switch" 的开关。
+    另有一张表头不同的表格，用来确认脚本不改动它。
+    用例按顺序执行，后面的用例基于前面改动后的状态；刷新页面即可重新运行。
+  -->
+  <style>
+    :root { color-scheme: light dark; }
+    body { margin: 0; padding: 24px 16px; font: 14px/1.6 system-ui, sans-serif; }
+    h1 { font-size: 20px; }
+    h2 { margin-top: 32px; font-size: 16px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 4px 8px; border-bottom: 1px solid #8884; text-align: left; vertical-align: top; }
+    .pass { color: #1a7f37; }
+    .fail { color: #cf222e; font-weight: 600; }
+    code { white-space: pre-wrap; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <h1>OpenCode: Split Models 测试页</h1>
+
+  <h2>自动测试</h2>
+  <p id="summary">运行中……</p>
+  <table>
+    <thead><tr><th>场景</th><th>期望</th><th>实际</th><th>结果</th></tr></thead>
+    <tbody id="results"></tbody>
+  </table>
+
+  <h2>模拟的 Models 表格</h2>
+  <table id="models">
+    <thead>
+      <tr><th>Model</th><th>Features</th><th>Input</th><th>Output</th><th>Cache Read</th><th>Cache Write</th><th>Enabled</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <h2>其他表格（不应被改动）</h2>
+  <table id="other">
+    <thead><tr><th>Name</th><th>Enabled</th></tr></thead>
+    <tbody>
+      <tr><td>Sidebar item</td><td><input type="checkbox" role="switch" aria-checked="true" aria-label="Sidebar item enabled"></td></tr>
+    </tbody>
+  </table>
+
+  <!-- 按顺序生成模型行：名称顺序与开关状态混杂，用来验证分组与排序 -->
+  <script>
+    const FIXTURE = [
+      ['Foxtrot', true],
+      ['Bravo', false],
+      ['Charlie', true],
+      ['Alpha', false],
+      ['Echo', false],
+      ['Delta', true],
+      ['GLM-5', false],
+      ['Gemini 3', false],
+    ];
+    const tbody = document.querySelector('#models tbody');
+    for (const [name, on] of FIXTURE) {
+      const id = name.toLowerCase().replace(/\s+/g, '-');
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><div><span class="break-words"><span>${name}</span></span> <span title="${id}">${id}</span></div></td>
+        <td>-</td><td>$1.00</td><td>$2.00</td><td>-</td><td>-</td>
+        <td><input type="checkbox" role="switch" aria-checked="${on}" aria-label="${name} enabled"></td>`;
+      tbody.append(tr);
+    }
+  </script>
+
+  <!-- 记录控制台输出，用来确认脚本加载时只输出脚本名。须放在脚本本体之前 -->
+  <script>
+    window.consoleLogs = [];
+    const originalLog = console.log;
+    console.log = (...args) => {
+      window.consoleLogs.push(args);
+      originalLog(...args);
+    };
+  </script>
+
+  <script src="../../__tests__/gm-mock.js" data-name="OpenCode: Split Models (test page)"></script>
+  <script src="../opencode-split-models.user.js"></script>
+
+  <script>
+    const GROUP_ATTR = 'data-user-script-opencode-split-models-group';
+    const GROUP_CLASS = 'user-script-opencode-split-models-group';
+    const otherTbody = document.querySelector('#other tbody');
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+    const nameOf = (tr) => tr.cells[0].querySelector('.break-words')?.textContent.trim() ?? tr.textContent.trim();
+    const rowOf = (name) => [...tbody.rows].find((tr) => nameOf(tr) === name);
+    const toggleOf = (name) => rowOf(name).cells[6].querySelector('input[role="switch"]');
+    const setOn = (name, on) => toggleOf(name).setAttribute('aria-checked', String(on));
+    // 按页面顺序列出：分组标题取文字，模型行取名称
+    const seq = () => [...tbody.children].map((tr) => (tr.hasAttribute(GROUP_ATTR) ? tr.textContent.trim() : nameOf(tr)));
+
+    // 搜索用例中被框架删掉的行，之后用它们的副本模拟框架重新加入
+    const removed = [];
+
+    const cases = [
+      {
+        name: '加载后自动分成两组：标题带数量，组内按名称排序（不区分大小写）',
+        run: () => seq(),
+        expected: ['Enabled models (3)', 'Charlie', 'Delta', 'Foxtrot', 'Disabled models (5)', 'Alpha', 'Bravo', 'Echo', 'Gemini 3', 'GLM-5'],
+      },
+      {
+        name: '每组一个标题，标题横跨全部 7 列',
+        run: () => [...tbody.querySelectorAll(`tr[${GROUP_ATTR}]`)].map((tr) => tr.cells[0].colSpan),
+        expected: [7, 7],
+      },
+      {
+        name: '脚本只在加载时输出脚本名',
+        run: () => window.consoleLogs.map((args) => args[0]),
+        expected: ['OpenCode: Split Models (test page)'],
+      },
+      {
+        name: '其他表格的行数不变，也没有被加上脚本的类名',
+        run: () => [otherTbody.rows.length, document.querySelectorAll('#other [class*="user-script-opencode-split-models"]').length],
+        expected: [1, 0],
+      },
+      {
+        name: '开关打开（aria-checked 变化）后，模型移到已启用组',
+        run: async () => {
+          setOn('Bravo', true);
+          await settle();
+          return seq();
+        },
+        expected: ['Enabled models (4)', 'Bravo', 'Charlie', 'Delta', 'Foxtrot', 'Disabled models (4)', 'Alpha', 'Echo', 'Gemini 3', 'GLM-5'],
+      },
+      {
+        name: '开关关闭后，模型移到未启用组，并排在名称对应的位置',
+        run: async () => {
+          setOn('Foxtrot', false);
+          await settle();
+          return seq();
+        },
+        expected: ['Enabled models (3)', 'Bravo', 'Charlie', 'Delta', 'Disabled models (5)', 'Alpha', 'Echo', 'Foxtrot', 'Gemini 3', 'GLM-5'],
+      },
+      {
+        name: '移动后焦点仍在原来的开关上',
+        run: async () => {
+          toggleOf('Charlie').focus();
+          setOn('Charlie', false);
+          await settle();
+          return document.activeElement === toggleOf('Charlie');
+        },
+        expected: true,
+      },
+      {
+        name: '焦点用例之后，两组的计数与顺序正确',
+        run: () => seq(),
+        expected: ['Enabled models (2)', 'Bravo', 'Delta', 'Disabled models (6)', 'Alpha', 'Charlie', 'Echo', 'Foxtrot', 'Gemini 3', 'GLM-5'],
+      },
+      {
+        name: '搜索时框架删掉不匹配的行（这里用名称含 e 模拟），两组只剩匹配的行',
+        run: async () => {
+          for (const tr of [...tbody.rows]) {
+            if (!tr.hasAttribute(GROUP_ATTR) && !/e/i.test(nameOf(tr))) {
+              removed.push(tr);
+              tr.remove();
+            }
+          }
+          await settle();
+          return seq();
+        },
+        expected: ['Enabled models (1)', 'Delta', 'Disabled models (3)', 'Charlie', 'Echo', 'Gemini 3'],
+      },
+      {
+        name: '搜索清空后，框架重新加入的行（新节点）回到原来的组，并按名称排序',
+        run: async () => {
+          for (const tr of removed) tbody.append(tr.cloneNode(true));
+          await settle();
+          return seq();
+        },
+        expected: ['Enabled models (2)', 'Bravo', 'Delta', 'Disabled models (6)', 'Alpha', 'Charlie', 'Echo', 'Foxtrot', 'Gemini 3', 'GLM-5'],
+      },
+      {
+        name: '没有开关的行（例如空状态提示）不参与分组，留在最后',
+        run: async () => {
+          const placeholder = document.createElement('tr');
+          placeholder.innerHTML = '<td colspan="7">No more models</td>';
+          tbody.append(placeholder);
+          await settle();
+          const result = [tbody.lastElementChild.textContent.trim(), seq().length];
+          placeholder.remove();
+          return result;
+        },
+        expected: ['No more models', 11],
+      },
+      {
+        name: '多出来的同名分组标题被删掉，只保留一个，列表不变',
+        run: async () => {
+          const stale = document.createElement('tr');
+          stale.className = GROUP_CLASS;
+          stale.setAttribute(GROUP_ATTR, 'enabled');
+          tbody.append(stale);
+          await settle();
+          return [document.querySelectorAll(`tr[${GROUP_ATTR}="enabled"]`).length, seq()];
+        },
+        expected: [1, ['Enabled models (2)', 'Bravo', 'Delta', 'Disabled models (6)', 'Alpha', 'Charlie', 'Echo', 'Foxtrot', 'Gemini 3', 'GLM-5']],
+      },
+      {
+        name: '整理完成后不再改动 DOM（不会反复触发）',
+        run: async () => {
+          const records = [];
+          const observer = new MutationObserver((list) => records.push(...list));
+          observer.observe(tbody, { childList: true, subtree: true, attributes: true, characterData: true });
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          observer.disconnect();
+          return records.length;
+        },
+        expected: 0,
+      },
+      {
+        name: '一个模型都没有时，不显示分组标题',
+        run: async () => {
+          for (const tr of [...tbody.rows]) {
+            if (tr.querySelector('input[role="switch"]')) tr.remove();
+          }
+          await settle();
+          return document.querySelectorAll(`tr[${GROUP_ATTR}]`).length;
+        },
+        expected: 0,
+      },
+    ];
+
+    const results = document.getElementById('results');
+    const summary = document.getElementById('summary');
+
+    const addResult = (cells, ok) => {
+      const tr = document.createElement('tr');
+      for (const text of cells) {
+        const td = document.createElement('td');
+        const code = document.createElement('code');
+        code.textContent = text;
+        td.append(code);
+        tr.append(td);
+      }
+      const verdict = document.createElement('td');
+      verdict.className = ok ? 'pass' : 'fail';
+      verdict.textContent = ok ? '通过' : '失败';
+      tr.append(verdict);
+      results.append(tr);
+    };
+
+    (async () => {
+      let passed = 0;
+      for (const { name, run, expected } of cases) {
+        let actual;
+        try {
+          actual = await run();
+        } catch (error) {
+          actual = `异常：${error.message}`;
+        }
+        const ok = JSON.stringify(actual) === JSON.stringify(expected);
+        if (ok) passed += 1;
+        addResult([name, JSON.stringify(expected), JSON.stringify(actual)], ok);
+      }
+      summary.textContent = `通过 ${passed} / ${cases.length} 项`;
+    })();
+  </script>
+</body>
+</html>

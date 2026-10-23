@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>示例应用</title>
+  <!--
+    用法：用浏览器直接打开本文件（file://），不需要安装到 Tampermonkey。
+    页面先引入仓库公共的 Tampermonkey API 替身 ../../__tests__/gm-mock.js，再引入脚本本体。
+    页面模拟一个只显示应用名的单页应用：用 hash 切换「路由」，切换时把标题重置为应用名。
+    也可以手动按住 Ctrl+Shift（macOS 为 ⌘+Shift）点击下方文字，观察标签页标题。
+    用例按顺序依赖前一步的状态，需要重新运行时先刷新页面。
+  -->
+  <style>
+    :root { color-scheme: light dark; }
+    body { margin: 0 auto; max-width: 960px; padding: 24px 16px; font: 14px/1.6 system-ui, sans-serif; }
+    h1 { font-size: 20px; }
+    h2 { margin-top: 32px; font-size: 16px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 4px 8px; border-bottom: 1px solid #8884; text-align: left; vertical-align: top; }
+    .pass { color: #1a7f37; }
+    .fail { color: #cf222e; font-weight: 600; }
+    .sample { padding: 8px 12px; border: 1px dashed #8888; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <h1>点击设为标题 测试页</h1>
+
+  <h2>自动测试</h2>
+  <p><button id="run" type="button">运行自动测试</button> <span id="summary"></span></p>
+  <table>
+    <thead><tr><th>场景</th><th>期望</th><th>实际</th><th>结果</th></tr></thead>
+    <tbody id="results"></tbody>
+  </table>
+
+  <h2>模拟单页应用</h2>
+  <div class="sample">
+    <nav><a href="#/orders">订单列表</a> · <a href="#/orders/42">订单详情</a></nav>
+    <h3 id="heading">订单列表</h3>
+    <p id="long">This is a very long heading text that goes well beyond the length a browser tab can show, so it should be cut short at some point.</p>
+    <p><a id="link" href="#/should-not-navigate">A link that must not navigate when used as a title</a></p>
+  </div>
+
+  <script src="../../__tests__/gm-mock.js" data-name="Click to Title (test page)"></script>
+  <script src="../click-to-title.user.js"></script>
+  <script>
+    // ---------- 模拟单页应用：切换路由时更新页面内容，并把标题重置为应用名 ----------
+    const APP = '示例应用';
+    const ROUTES = { '#/orders': '订单列表', '#/orders/42': '订单详情' };
+    function render() {
+      document.getElementById('heading').textContent = ROUTES[location.hash] ?? '首页';
+      document.title = APP;
+    }
+    window.addEventListener('hashchange', render);
+  </script>
+  <script>
+    // ---------- 自动测试 ----------
+    const $ = (id) => document.getElementById(id);
+    const IS_MAC = /mac/i.test(navigator.userAgentData?.platform ?? navigator.platform);
+    const MOD = IS_MAC ? { metaKey: true } : { ctrlKey: true };
+    // 点击后标题立即生效；路由切换与页面改写标题由脚本每 500 毫秒检查一次，等一个周期以上再断言
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 700));
+
+    // 依次派发一次完整点击的事件链
+    function click(el, opts = { ...MOD, shiftKey: true }) {
+      for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) {
+        const Ctor = type.startsWith('pointer') ? PointerEvent : MouseEvent;
+        el.dispatchEvent(new Ctor(type, { bubbles: true, composed: true, cancelable: true, button: 0, ...opts }));
+      }
+    }
+
+    async function go(hash) {
+      location.hash = hash;
+      await settle();
+    }
+
+    const cases = [
+      ['初始标题为应用名', async () => { await go('#/orders'); return document.title; }, APP],
+      ['Ctrl/⌘+Shift+点击：设为标题并附带应用名', async () => { click($('heading')); await settle(); return document.title; }, `订单列表 - ${APP}`],
+      ['普通点击不改标题', async () => { click($('long'), {}); await settle(); return document.title; }, `订单列表 - ${APP}`],
+      ['多按了修饰键不触发', async () => { click($('long'), { ...MOD, shiftKey: true, altKey: true }); await settle(); return document.title; }, `订单列表 - ${APP}`],
+      ['过长的文字截断', async () => {
+        click($('long'));
+        await settle();
+        const custom = document.title.split(' - ')[0];
+        return custom.length <= 80 && custom.endsWith('…');
+      }, true],
+      ['点击链接不会跳转', async () => {
+        const before = location.hash;
+        click($('link'));
+        await settle();
+        return location.hash === before && document.title.startsWith('A link that must not navigate');
+      }, true],
+      ['切换路由：页面重置为应用名，新路由没有自定义标题', async () => { await go('#/orders/42'); return document.title; }, APP],
+      ['新路由上设置标题', async () => { click($('heading')); await settle(); return document.title; }, `订单详情 - ${APP}`],
+      ['切回原路由：自动换上该路由的标题', async () => { await go('#/orders'); return document.title; }, `A link that must not navigate when used as a title - ${APP}`],
+      ['页面自己改写标题后再次换上', async () => { document.title = APP; await settle(); return document.title; }, `A link that must not navigate when used as a title - ${APP}`],
+      ['其他路由的标题各自保留', async () => { await go('#/orders/42'); return document.title; }, `订单详情 - ${APP}`],
+      ['回到没设置过的路由：恢复应用名', async () => { await go('#/'); return document.title; }, APP],
+    ];
+
+    $('run').addEventListener('click', async () => {
+      const tbody = $('results');
+      tbody.textContent = '';
+      let failed = 0;
+      for (const [name, run, expected] of cases) {
+        let actual;
+        try {
+          actual = await run();
+        } catch (err) {
+          actual = `Error: ${err.message}`;
+        }
+        const ok = actual === expected;
+        if (!ok) failed += 1;
+        const row = tbody.insertRow();
+        row.insertCell().textContent = name;
+        row.insertCell().textContent = JSON.stringify(expected);
+        row.insertCell().textContent = JSON.stringify(actual);
+        const result = row.insertCell();
+        result.textContent = ok ? '通过' : '失败';
+        result.className = ok ? 'pass' : 'fail';
+      }
+      const summary = $('summary');
+      summary.textContent = failed ? `${failed} 项失败，共 ${cases.length} 项` : `全部通过，共 ${cases.length} 项`;
+      summary.className = failed ? 'fail' : 'pass';
+    });
+  </script>
+</body>
+</html>
