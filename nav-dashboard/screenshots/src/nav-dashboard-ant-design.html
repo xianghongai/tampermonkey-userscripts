@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<!--
+  Scene: Ant Design overview page with "Nav Dashboard" open (nav-dashboard.user.js).
+  Mirrors the script's current behaviour on ant.design:
+    - full-screen board overlays the page, adopting the site's menu styles
+    - columns layout: each group starts a new column, overflowing into the next
+    - item count badge after each group title
+    - total count and close button in the top right corner
+  Toolbar: Tampermonkey icon, then browser menu.
+  Render from project root:
+    ~/.agents/skills/extension-screenshots/scripts/render.sh \
+      nav-dashboard/screenshots/src/nav-dashboard-ant-design.html \
+      nav-dashboard/screenshots/nav-dashboard-ant-design-1280x800.png
+-->
+<link rel="stylesheet" href="_partials/browser.css">
+<script defer src="_partials/browser.js"></script>
+<style>
+  body { background: #ffffff; color: rgba(0, 0, 0, 0.88); }
+  .page-viewport { background: #ffffff; position: relative; overflow: hidden; }
+
+  /* Board scroller */
+  .scroller {
+    position: absolute;
+    inset: 0;
+    box-sizing: border-box;
+    display: block;
+    padding: 48px 24px 14px;
+    background: #ffffff;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .board {
+    display: block;
+    box-sizing: border-box;
+    height: 100%;
+    margin: 0 auto;
+    padding: 0;
+    columns: 168px auto;
+    column-gap: 22px;
+    column-fill: auto;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+    font-size: 14px;
+    line-height: 1.5714;
+    list-style: none;
+  }
+
+  .group {
+    break-before: column;
+    margin-bottom: 20px;
+    display: block;
+  }
+
+  .group-title {
+    padding: 6px 12px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: rgba(0, 0, 0, 0.45);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    break-inside: avoid;
+    break-after: avoid;
+  }
+
+  .count-badge {
+    margin-inline-start: 0.5em;
+    font-size: 0.85em;
+    font-weight: normal;
+    opacity: 0.55;
+  }
+
+  .item-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: block;
+  }
+
+  .item {
+    height: 35px;
+    line-height: 35px;
+    padding: 0 12px;
+    margin: 2px 0;
+    border-radius: 8px;
+    color: rgba(0, 0, 0, 0.88);
+    display: flex;
+    align-items: center;
+    break-inside: avoid;
+    white-space: nowrap;
+  }
+  .item a {
+    color: inherit;
+    text-decoration: none;
+    display: block;
+    width: 100%;
+  }
+
+  .item.selected {
+    color: #1677ff;
+    background-color: #e6f4ff;
+    font-weight: 600;
+  }
+  .item.selected a {
+    color: #1677ff;
+  }
+
+  /* Host controls (top-right bar) */
+  .bar {
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    z-index: 60;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    color: rgba(0, 0, 0, 0.88);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  .total {
+    opacity: 0.55;
+  }
+  .close-btn {
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: inherit;
+    opacity: 0.7;
+    cursor: pointer;
+  }
+  .close-btn svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* Bottom-right toggle button (visible so users know how to trigger it) */
+  .toggle-anchor {
+    position: absolute;
+    right: 20px;
+    bottom: 20px;
+    z-index: 60;
+  }
+  .toggle-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    background: #ffffff;
+    color: rgba(0, 0, 0, 0.88);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    display: grid;
+    place-items: center;
+    padding: 0;
+    cursor: pointer;
+  }
+  .toggle-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+</style>
+</head>
+<body>
+  <browser-window toolbar="tampermonkey"
+    tab-title="Overview - Ant Design"
+    url="ant.design/components/overview">
+    
+    <div class="bar">
+      <span class="total">70 items</span>
+      <button class="close-btn" type="button" aria-label="Close">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="callout-anchor toggle-anchor">
+      <button class="toggle-btn" type="button" aria-label="Nav dashboard (Alt+KeyM)">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+      </button>
+      <span class="callout left">Click or Alt+M to open dashboard</span>
+    </div>
+
+    <div class="scroller" data-user-script-nav-dashboard-layout="columns">
+      <div class="board" data-user-script-nav-dashboard-board>
+        
+        <!-- Group 1: General -->
+        <div class="group" data-user-script-nav-dashboard-break>
+          <div class="group-title" data-user-script-nav-dashboard-title>
+            <div class="callout-anchor">
+              <span>General</span><span class="count-badge user-script-nav-dashboard-count">4</span>
+              <span class="callout above">Item count per group</span>
+            </div>
+          </div>
+          <ul class="item-list" data-user-script-nav-dashboard-wrap>
+            <li class="item selected" data-user-script-nav-dashboard-item><a href="#">Button</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">FloatButton</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Icon</a></li>
+            <li class="item" data-user-script-nav-dashboard-item>
+              <div class="callout-anchor" style="width: 100%;">
+                <a href="#">Typography</a>
+                <span class="callout below">Each group starts in a new column</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Group 2: Layout -->
+        <div class="group" data-user-script-nav-dashboard-break>
+          <div class="group-title" data-user-script-nav-dashboard-title>
+            Layout<span class="count-badge user-script-nav-dashboard-count">6</span>
+          </div>
+          <ul class="item-list" data-user-script-nav-dashboard-wrap>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Divider</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Flex</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Grid</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Layout</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Space</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Splitter</a></li>
+          </ul>
+        </div>
+
+        <!-- Group 3: Navigation -->
+        <div class="group" data-user-script-nav-dashboard-break>
+          <div class="group-title" data-user-script-nav-dashboard-title>
+            Navigation<span class="count-badge user-script-nav-dashboard-count">7</span>
+          </div>
+          <ul class="item-list" data-user-script-nav-dashboard-wrap>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Anchor</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Breadcrumb</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Dropdown</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Menu</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Pagination</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Steps</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Tabs</a></li>
+          </ul>
+        </div>
+
+        <!-- Group 4: Data Entry -->
+        <div class="group" data-user-script-nav-dashboard-break>
+          <div class="group-title" data-user-script-nav-dashboard-title>
+            Data Entry<span class="count-badge user-script-nav-dashboard-count">18</span>
+          </div>
+          <ul class="item-list" data-user-script-nav-dashboard-wrap>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">AutoComplete</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Cascader</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Checkbox</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">ColorPicker</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">DatePicker</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Form</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Input</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">InputNumber</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Mentions</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Radio</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Rate</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Select</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Slider</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Switch</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">TimePicker</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Transfer</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">TreeSelect</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Upload</a></li>
+          </ul>
+        </div>
+
+        <!-- Group 5: Data Display -->
+        <div class="group" data-user-script-nav-dashboard-break>
+          <div class="group-title" data-user-script-nav-dashboard-title>
+            Data Display<span class="count-badge user-script-nav-dashboard-count">20</span>
+          </div>
+          <ul class="item-list" data-user-script-nav-dashboard-wrap>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Avatar</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Badge</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Calendar</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Card</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Carousel</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Collapse</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Descriptions</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Empty</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Image</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Popover</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">QRCode</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Segmented</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Statistic</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Table</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Tag</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Timeline</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Tooltip</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Tour</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Tree</a></li>
+          </ul>
+        </div>
+
+        <!-- Group 6: Feedback -->
+        <div class="group" data-user-script-nav-dashboard-break>
+          <div class="group-title" data-user-script-nav-dashboard-title>
+            Feedback<span class="count-badge user-script-nav-dashboard-count">11</span>
+          </div>
+          <ul class="item-list" data-user-script-nav-dashboard-wrap>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Alert</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Drawer</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Message</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Modal</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Notification</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Popconfirm</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Progress</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Result</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Skeleton</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Spin</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Watermark</a></li>
+          </ul>
+        </div>
+
+        <!-- Group 7: Other -->
+        <div class="group" data-user-script-nav-dashboard-break>
+          <div class="group-title" data-user-script-nav-dashboard-title>
+            Other<span class="count-badge user-script-nav-dashboard-count">4</span>
+          </div>
+          <ul class="item-list" data-user-script-nav-dashboard-wrap>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">Affix</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">App</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">ConfigProvider</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">FloatButton</a></li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+  </browser-window>
+  <script>
+    (() => {
+      function fitWidth() {
+        const board = document.querySelector('[data-user-script-nav-dashboard-board]');
+        if (!board) return;
+        board.style.removeProperty('width');
+        const items = [...board.querySelectorAll('[data-user-script-nav-dashboard-item]')];
+        if (!items.length) return;
+        const style = getComputedStyle(board);
+        const width = board.clientWidth;
+        const gap = parseFloat(style.columnGap) || 0;
+        const colW = parseFloat(style.columnWidth) || 168;
+        const count = Math.max(1, Math.floor((width + gap) / (colW + gap)));
+        const columnWidth = (width - (count - 1) * gap) / count;
+        const left = board.getBoundingClientRect().left;
+        let used = 0;
+        for (const item of items) {
+          used = Math.max(used, Math.floor((item.getBoundingClientRect().left - left + 1) / (columnWidth + gap)) + 1);
+        }
+        if (used === 0 || used >= count) return;
+        board.style.setProperty('width', `${used * columnWidth + (used - 1) * gap}px`, 'important');
+      }
+
+      window.addEventListener('load', fitWidth);
+      window.addEventListener('resize', fitWidth);
+      if (document.readyState === 'complete') fitWidth();
+      else document.addEventListener('DOMContentLoaded', fitWidth);
+      setTimeout(fitWidth, 50);
+    })();
+  </script>
+</body>
+</html>

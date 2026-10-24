@@ -1,6 +1,7 @@
 // ==UserScript==
 // @name         Nav Dashboard
 // @name:en      Nav Dashboard
+// @name:zh-CN   Nav Dashboard
 // @namespace    https://github.com/xianghongai
 // @version      1.0.1
 // @description  Documentation sites list their components and APIs in a long, grouped sidebar that you have to scroll through. This opens a full-screen board that lays all the groups out side by side, so you can see the whole tech stack at a glance and jump to any page.
@@ -28,6 +29,8 @@
 // @match        https://vant-ui.github.io/vant/*
 // @match        https://react.dev/reference/*
 // @match        https://*.react.dev/reference/*
+// @match        https://react.dev/learn/*
+// @match        https://*.react.dev/learn/*
 // @match        https://docs.angularjs.org/*
 // @match        https://tdesign.tencent.com/*
 // @match        https://devui.design/*
@@ -130,8 +133,8 @@ console.log(GM_info.script.name);
       item: 'li:not(:has(ul)) > a',
       heading: 'nav > ul > h3',
       layout: 'waterfall',
-      // 折叠的子菜单外层有半透明
-      css: '.opacity-50 { opacity: 1 !important; }',
+      // 折叠的子菜单外层有半透明；标题右侧的箭头按折叠状态旋转，看板里子项都已展开，箭头恢复朝下
+      css: '.opacity-50 { opacity: 1 !important; } [data-user-script-nav-dashboard-title] svg { rotate: none !important; transform: none !important; transition: none !important; }',
     },
     'vant-ui.github.io/vant': {
       menu: '.van-doc-nav',
@@ -174,6 +177,8 @@ console.log(GM_info.script.name);
   };
   SITES['element.eleme.io'] = SITES['element.eleme.cn'];
   SITES['v2.vuejs.org/v2/'] = SITES['v2.cn.vuejs.org/v2/'];
+  // react.dev/learn 的侧栏与参考文档结构相同，共用同一份配置
+  SITES['react.dev/learn'] = SITES['react.dev/reference'];
 
   // ---------- 布局 ----------
   // 看板的默认布局，各网站可以用 layout 单独指定：
@@ -457,7 +462,12 @@ console.log(GM_info.script.name);
   // 图标取自 Lucide（lucide-static v1.60.0，ISC 许可）：layout-grid、x
   toggleButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>';
   closeButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
-  document.documentElement.append(host);
+  // 站点的 React 水合失败时会清掉 <html> 下的未知节点，控件被删后立即挂回；host 与其状态都保持不变
+  const attachHost = () => {
+    if (!host.isConnected) document.documentElement.append(host);
+  };
+  attachHost();
+  new MutationObserver(attachHost).observe(document.documentElement, { childList: true });
 
   /**
    * 让控件的颜色与字体跟随网站。

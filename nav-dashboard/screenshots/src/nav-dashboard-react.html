@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<!--
+  Scene: React Reference page with "Nav Dashboard" open (nav-dashboard.user.js).
+  Mirrors the script's current behaviour on react.dev/reference:
+    - full-screen board overlays the page, adopting React's doc styling
+    - waterfall layout: groups stay intact (break-inside: avoid), columns balanced
+    - package headings (h3) and item count badges on groups
+    - total count and close button in the top right corner
+  Toolbar: Tampermonkey icon, then browser menu.
+  Render from project root:
+    ~/.agents/skills/extension-screenshots/scripts/render.sh \
+      nav-dashboard/screenshots/src/nav-dashboard-react.html \
+      nav-dashboard/screenshots/nav-dashboard-react-1280x800.png
+-->
+<link rel="stylesheet" href="_partials/browser.css">
+<script defer src="_partials/browser.js"></script>
+<style>
+  body { background: #ffffff; color: #23272f; }
+  .page-viewport { background: #ffffff; position: relative; overflow: hidden; }
+
+  /* Board scroller */
+  .scroller {
+    position: absolute;
+    inset: 0;
+    box-sizing: border-box;
+    display: block;
+    padding: 46px 28px 14px;
+    background: #ffffff;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .board {
+    display: block;
+    box-sizing: border-box;
+    margin: 0 auto;
+    padding: 0;
+    columns: 220px auto;
+    column-gap: 28px;
+    column-fill: balance;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  /* Headings (h3) */
+  .heading {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #5e687e;
+    padding: 12px 10px 4px;
+    margin: 0;
+    break-after: avoid;
+    break-inside: avoid;
+  }
+  .heading:first-child {
+    padding-top: 0;
+  }
+
+  /* Groups */
+  .group {
+    display: block;
+    break-inside: avoid;
+    margin-bottom: 12px;
+    padding: 0;
+  }
+
+  .group-title {
+    display: flex;
+    align-items: center;
+    padding: 6px 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #23272f;
+    text-decoration: none;
+    border-radius: 6px;
+    break-after: avoid;
+  }
+
+  .count-badge {
+    margin-inline-start: 0.5em;
+    font-size: 0.85em;
+    font-weight: normal;
+    opacity: 0.55;
+  }
+
+  .item-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .item {
+    display: block;
+    break-inside: avoid;
+    margin: 1px 0;
+  }
+
+  .item a {
+    display: block;
+    padding: 4px 10px 4px 18px;
+    color: #404756;
+    text-decoration: none;
+    border-radius: 6px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .item.prose a {
+    font-family: inherit;
+    font-size: 13px;
+  }
+
+  .item.selected a {
+    background: #ebf5fb;
+    color: #087ea4;
+    font-weight: 600;
+  }
+
+  /* Host controls (top-right bar) */
+  .bar {
+    position: absolute;
+    top: 10px;
+    right: 24px;
+    z-index: 60;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    color: #23272f;
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  .total {
+    opacity: 0.55;
+  }
+  .close-btn {
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: inherit;
+    opacity: 0.7;
+    cursor: pointer;
+  }
+  .close-btn svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* Bottom-right toggle button */
+  .toggle-anchor {
+    position: absolute;
+    right: 20px;
+    bottom: 20px;
+    z-index: 60;
+  }
+  .toggle-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    background: #ffffff;
+    color: #23272f;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    display: grid;
+    place-items: center;
+    padding: 0;
+    cursor: pointer;
+  }
+  .toggle-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+</style>
+</head>
+<body>
+  <browser-window toolbar="tampermonkey"
+    tab-title="React Reference Overview – React"
+    url="react.dev/reference/react">
+    
+    <div class="bar">
+      <span class="total">48 items</span>
+      <button class="close-btn" type="button" aria-label="Close">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="callout-anchor toggle-anchor">
+      <button class="toggle-btn" type="button" aria-label="Nav dashboard (Alt+KeyM)">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+      </button>
+      <span class="callout left">Click or Alt+M to open dashboard</span>
+    </div>
+
+    <div class="scroller" data-user-script-nav-dashboard-layout="waterfall">
+      <div class="board" data-user-script-nav-dashboard-board>
+        
+        <!-- Heading 1: react@19 -->
+        <h3 class="heading">react@19</h3>
+
+        <div class="group" data-user-script-nav-dashboard-unit>
+          <div class="group-title" data-user-script-nav-dashboard-title>
+            <div class="callout-anchor">
+              <span>Hooks</span><span class="count-badge user-script-nav-dashboard-count">13</span>
+              <span class="callout right">Count per group</span>
+            </div>
+          </div>
+          <ul class="item-list" data-user-script-nav-dashboard-wrap>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">useActionState</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">useCallback</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">useContext</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">useDebugValue</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">useDeferredValue</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">useEffect</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">useId</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">useMemo</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">useOptimistic</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">useReducer</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">useRef</a></li>
+            <li class="item selected" data-user-script-nav-dashboard-item><a href="#">useState</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">useTransition</a></li>
+          </ul>
+        </div>
+
+        <div class="group" data-user-script-nav-dashboard-unit>
+          <div class="group-title" data-user-script-nav-dashboard-title>
+            Components<span class="count-badge user-script-nav-dashboard-count">5</span>
+          </div>
+          <ul class="item-list" data-user-script-nav-dashboard-wrap>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">&lt;Fragment&gt;</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">&lt;Profiler&gt;</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">&lt;StrictMode&gt;</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">&lt;Suspense&gt;</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">&lt;ViewTransition&gt;</a></li>
+          </ul>
+        </div>
+
+        <div class="group" data-user-script-nav-dashboard-unit>
+          <div class="group-title" data-user-script-nav-dashboard-title>
+            APIs<span class="count-badge user-script-nav-dashboard-count">7</span>
+          </div>
+          <ul class="item-list" data-user-script-nav-dashboard-wrap>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">act</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">cache</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">createContext</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">lazy</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">memo</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">startTransition</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">use</a></li>
+          </ul>
+        </div>
+
+        <!-- Heading 2: react-dom@19 -->
+        <h3 class="heading">react-dom@19</h3>
+
+        <div class="group" data-user-script-nav-dashboard-unit>
+          <div class="group-title" data-user-script-nav-dashboard-title>
+            Hooks<span class="count-badge user-script-nav-dashboard-count">1</span>
+          </div>
+          <ul class="item-list" data-user-script-nav-dashboard-wrap>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">useFormStatus</a></li>
+          </ul>
+        </div>
+
+        <div class="group" data-user-script-nav-dashboard-unit>
+          <div class="group-title" data-user-script-nav-dashboard-title>
+            Components<span class="count-badge user-script-nav-dashboard-count">6</span>
+          </div>
+          <ul class="item-list" data-user-script-nav-dashboard-wrap>
+            <li class="item prose" data-user-script-nav-dashboard-item><a href="#">Common (e.g. &lt;div&gt;)</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">&lt;form&gt;</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">&lt;input&gt;</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">&lt;progress&gt;</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">&lt;select&gt;</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">&lt;textarea&gt;</a></li>
+          </ul>
+        </div>
+
+        <div class="group" data-user-script-nav-dashboard-unit>
+          <div class="group-title" data-user-script-nav-dashboard-title>
+            Client APIs<span class="count-badge user-script-nav-dashboard-count">2</span>
+          </div>
+          <ul class="item-list" data-user-script-nav-dashboard-wrap>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">createRoot</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">hydrateRoot</a></li>
+          </ul>
+        </div>
+
+        <div class="group" data-user-script-nav-dashboard-unit>
+          <div class="group-title" data-user-script-nav-dashboard-title>
+            Server APIs<span class="count-badge user-script-nav-dashboard-count">4</span>
+          </div>
+          <ul class="item-list" data-user-script-nav-dashboard-wrap>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">renderToPipeableStream</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">renderToReadableStream</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">renderToStaticMarkup</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">renderToString</a></li>
+          </ul>
+        </div>
+
+        <div class="group" data-user-script-nav-dashboard-unit>
+          <div class="group-title" data-user-script-nav-dashboard-title>
+            Static APIs<span class="count-badge user-script-nav-dashboard-count">2</span>
+          </div>
+          <ul class="item-list" data-user-script-nav-dashboard-wrap>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">prerender</a></li>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">prerenderToNodeStream</a></li>
+          </ul>
+        </div>
+
+        <!-- Heading 3: Rules of React -->
+        <h3 class="heading">Rules of React</h3>
+
+        <div class="group" data-user-script-nav-dashboard-unit>
+          <div class="group-title" data-user-script-nav-dashboard-title>
+            Overview<span class="count-badge user-script-nav-dashboard-count">3</span>
+          </div>
+          <ul class="item-list" data-user-script-nav-dashboard-wrap>
+            <li class="item prose" data-user-script-nav-dashboard-item><a href="#">Pure Components &amp; Hooks</a></li>
+            <li class="item prose" data-user-script-nav-dashboard-item><a href="#">React calls Components</a></li>
+            <li class="item prose" data-user-script-nav-dashboard-item><a href="#">Rules of Hooks</a></li>
+          </ul>
+        </div>
+
+        <!-- Heading 4: React Server Components -->
+        <h3 class="heading">React Server Components</h3>
+
+        <div class="group" data-user-script-nav-dashboard-unit>
+          <div class="group-title" data-user-script-nav-dashboard-title>
+            Directives<span class="count-badge user-script-nav-dashboard-count">2</span>
+          </div>
+          <ul class="item-list" data-user-script-nav-dashboard-wrap>
+            <li class="item" data-user-script-nav-dashboard-item><a href="#">'use client'</a></li>
+            <li class="item" data-user-script-nav-dashboard-item>
+              <div class="callout-anchor" style="width: 100%;">
+                <a href="#">'use server'</a>
+                <span class="callout below">Waterfall layout: groups stay intact across columns</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+  </browser-window>
+  <script>
+    (() => {
+      function fitWidth() {
+        const board = document.querySelector('[data-user-script-nav-dashboard-board]');
+        if (!board) return;
+        board.style.removeProperty('width');
+        const items = [...board.querySelectorAll('[data-user-script-nav-dashboard-item]')];
+        if (!items.length) return;
+        const style = getComputedStyle(board);
+        const width = board.clientWidth;
+        const gap = parseFloat(style.columnGap) || 0;
+        const colW = parseFloat(style.columnWidth) || 220;
+        const count = Math.max(1, Math.floor((width + gap) / (colW + gap)));
+        const columnWidth = (width - (count - 1) * gap) / count;
+        const left = board.getBoundingClientRect().left;
+        let used = 0;
+        for (const item of items) {
+          used = Math.max(used, Math.floor((item.getBoundingClientRect().left - left + 1) / (columnWidth + gap)) + 1);
+        }
+        if (used === 0 || used >= count) return;
+        board.style.setProperty('width', `${used * columnWidth + (used - 1) * gap}px`, 'important');
+      }
+
+      window.addEventListener('load', fitWidth);
+      window.addEventListener('resize', fitWidth);
+      if (document.readyState === 'complete') fitWidth();
+      else document.addEventListener('DOMContentLoaded', fitWidth);
+      setTimeout(fitWidth, 50);
+    })();
+  </script>
+</body>
+</html>
