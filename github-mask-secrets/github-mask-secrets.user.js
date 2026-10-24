@@ -1,6 +1,7 @@
 // ==UserScript==
 // @name         GitHub & Gist: Mask Secrets
 // @name:en      GitHub & Gist: Mask Secrets
+// @name:zh-CN   GitHub & Gist: Mask Secrets
 // @namespace    https://github.com/xianghongai
 // @version      1.0.2
 // @description  Keeps secrets from leaking when you share your screen in an online meeting or select and copy code by hand: on every GitHub repo and gist (or only the accounts you choose), values of secret-looking keys (TOKEN, KEY, SECRET, PASSWORD, CREDENTIAL…) are shown and copied as first4***last4. Raw links, copy buttons and clone still return the real value.

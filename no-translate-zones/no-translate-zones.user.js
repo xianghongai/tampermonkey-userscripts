@@ -1,6 +1,7 @@
 // ==UserScript==
 // @name         No-Translate Zones
 // @name:en      No-Translate Zones
+// @name:zh-CN   No-Translate Zones
 // @namespace    https://github.com/xianghongai
 // @version      1.1.1
 // @description  Mark code blocks and other parts of a page chosen by rules as "do not translate" (translate="no"), so Google Translate, the browser's page translation and any other translator that honors the standard keep them in the original language. Rules apply to all sites, a domain, or a specific path.

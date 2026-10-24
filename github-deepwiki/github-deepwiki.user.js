@@ -1,6 +1,7 @@
 // ==UserScript==
 // @name         GitHub 😍 DeepWiki
 // @name:en      GitHub 😍 DeepWiki
+// @name:zh-CN   GitHub 😍 DeepWiki
 // @namespace    https://github.com/xianghongai
 // @version      1.0.1
 // @description  Add a shortcut button on GitHub repository pages to jump directly to DeepWiki

@@ -1,6 +1,7 @@
 // ==UserScript==
 // @name         AI Chat Quick Delete
 // @name:en      AI Chat Quick Delete
+// @name:zh-CN   AI Chat Quick Delete
 // @namespace    https://github.com/xianghongai
 // @version      1.0.1
 // @description  Add a trash icon to each conversation in the sidebar of ChatGPT, Claude, Gemini, DeepSeek, Qwen and Grok to delete it in one click, with the confirmation dialog handled for you (can be switched off).

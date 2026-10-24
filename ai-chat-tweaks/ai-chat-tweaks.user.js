@@ -1,6 +1,7 @@
 // ==UserScript==
 // @name         AI Chat Tweaks
 // @name:en      AI Chat Tweaks
+// @name:zh-CN   AI Chat Tweaks
 // @namespace    https://github.com/xianghongai
 // @version      1.0.0
 // @description  Make the conversation area and the input box the same width (50vw by default) and your own messages the same bubble style on ChatGPT, Claude, Gemini, DeepSeek, Qwen and Grok, so switching between them does not shift your eyes. The width can be changed from the script menu.

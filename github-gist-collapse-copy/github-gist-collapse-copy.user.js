@@ -1,6 +1,7 @@
 // ==UserScript==
 // @name         GitHub & Gist: Collapse & Copy
 // @name:en      GitHub & Gist: Collapse & Copy
+// @name:zh-CN   GitHub & Gist: Collapse & Copy
 // @namespace    https://github.com/xianghongai
 // @version      1.1.0
 // @description  Gist list: hides code previews. Gist files: collapse one by one or all at once, optionally collapsed by default, copy raw content. Copy Gist IDs, file names and repository names. Issue/PR/Discussion comments: collapse and copy the Markdown source.

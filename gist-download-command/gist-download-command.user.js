@@ -1,6 +1,7 @@
 // ==UserScript==
 // @name         Gist: Download Commands
 // @name:en      Gist: Download Commands
+// @name:zh-CN   Gist: Download Commands
 // @namespace    https://github.com/xianghongai
 // @version      1.0.1
 // @description  Gist detail page: copy a GitHub CLI or curl command that downloads each file. When the Gist has a Cairn manifest, the command writes to the path it declares.

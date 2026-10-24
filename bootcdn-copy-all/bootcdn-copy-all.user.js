@@ -1,6 +1,7 @@
 // ==UserScript==
 // @name         BootCDN: Copy All
 // @name:en      BootCDN: Copy All
+// @name:zh-CN   BootCDN: Copy All
 // @namespace    https://github.com/xianghongai
 // @version      1.0.1
 // @description  On BootCDN library pages, copy the links or <script>/<link> tags of all files currently shown in one click, following the selected version, file type and protocol.

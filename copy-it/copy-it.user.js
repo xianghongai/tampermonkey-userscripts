@@ -1,6 +1,7 @@
 // ==UserScript==
 // @name         Copy it 🚀
 // @name:en      Copy it 🚀
+// @name:zh-CN   Copy it 🚀
 // @namespace    https://github.com/xianghongai
 // @version      1.5.3
 // @description  Alt+click any element to copy its text. Add modifier keys to copy it as snake_case, kebab-case, camelCase or PascalCase, or to copy its title.

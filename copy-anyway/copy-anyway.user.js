@@ -1,6 +1,7 @@
 // ==UserScript==
 // @name         Copy Anyway
 // @name:en      Copy Anyway
+// @name:zh-CN   Copy Anyway
 // @namespace    https://github.com/xianghongai
 // @version      1.0.1
 // @description  Select and copy text on pages that block it with styles or scripts, and stop sites from appending copyright notices to what you copy. Works on built-in sites, and can be switched on for any site from the menu.
