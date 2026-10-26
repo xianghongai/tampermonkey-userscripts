@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Claude Quick Usage 测试页</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { margin: 0 auto; max-width: 960px; padding: 24px 16px; font: 14px/1.6 system-ui, sans-serif; }
+    h1 { font-size: 20px; }
+    h2 { margin-top: 32px; font-size: 16px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { padding: 4px 8px; border-bottom: 1px solid #8884; text-align: left; vertical-align: top; }
+    .pass { color: #1a7f37; font-weight: 600; }
+    .fail { color: #cf222e; font-weight: 600; }
+    .mock-container { padding: 16px; border: 1px dashed #8888; border-radius: 8px; margin-top: 12px; }
+    .df-footer-row { display: flex; align-items: center; gap: 8px; border: 1px solid #8884; padding: 8px; border-radius: 6px; }
+    .df-footer-aux { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+    .mock-menu { border: 1px solid #8884; border-radius: 6px; padding: 6px; width: 220px; margin-top: 8px; }
+    .mock-menu-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; cursor: pointer; border-radius: 4px; }
+    .mock-menu-item:hover, [data-highlighted] { background: #8882; }
+  </style>
+</head>
+<body>
+  <h1>Claude Quick Usage 测试页</h1>
+
+  <h2>自动测试</h2>
+  <p><button id="run" type="button">运行自动测试</button> <span id="summary"></span></p>
+  <table>
+    <thead><tr><th>用例</th><th>期望</th><th>实际</th><th>结果</th></tr></thead>
+    <tbody id="results"></tbody>
+  </table>
+
+  <h2>模拟 Claude DOM 环境</h2>
+  <div class="mock-container">
+    <div class="df-footer-row">
+      <div class="min-w-0 flex-1">
+        <button type="button" data-testid="user-menu-button">
+          <span>Avatar</span>
+          <span>Username</span>
+        </button>
+      </div>
+      <div class="df-footer-aux">
+        <span class="relative" id="mock-apps-wrap">
+          <a data-cds="Button" aria-label="Get apps and extensions" href="/downloads">
+            <span class="inline-flex"><span data-cds="Icon"></span></span>
+          </a>
+        </span>
+      </div>
+    </div>
+
+    <div id="menu-portal"></div>
+    <div id="dialog-portal"></div>
+  </div>
+
+  <script src="../../__tests__/gm-mock.js" data-name="Claude Quick Usage (test page)"></script>
+  <script src="../claude-quick-usage.user.js"></script>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    async function runTests() {
+      const results = $('results');
+      results.innerHTML = '';
+      let passed = 0;
+      let total = 0;
+
+      function assert(name, expected, actual, ok) {
+        total++;
+        if (ok) passed++;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${name}</td>
+          <td>${expected}</td>
+          <td>${actual}</td>
+          <td class="${ok ? 'pass' : 'fail'}">${ok ? 'PASS' : 'FAIL'}</td>
+        `;
+        results.appendChild(tr);
+      }
+
+      // 用例 1：左下角辅助栏注入了 Quick Button 且在 Get apps and extensions 左边
+      const quickBtn = document.querySelector('[data-user-script-claude-quick-usage-quick-btn]');
+      const appsWrap = $('mock-apps-wrap');
+      const isBeforeApps = quickBtn && quickBtn.nextElementSibling === appsWrap;
+      assert(
+        '快捷按钮注入在 Get apps 左侧',
+        '按钮存在且位于 Get apps and extensions 之前',
+        quickBtn ? (isBeforeApps ? '位于左侧' : '位置不匹配') : '未找到',
+        Boolean(quickBtn && isBeforeApps)
+      );
+
+      // 用例 2：快捷按钮使用 Lucide Gauge 图标
+      const lucideSvg = quickBtn?.querySelector('svg.lucide-gauge');
+      assert(
+        '快捷按钮使用 Lucide Gauge 图标',
+        '包含 svg.lucide-gauge 元素',
+        lucideSvg ? '包含 svg.lucide-gauge' : '未找到 Lucide SVG',
+        Boolean(lucideSvg)
+      );
+
+      // 用例 3：模拟 Usage 弹窗内的 Refresh 按钮，测试点击快捷按钮后自动触发 Refresh
+      let refreshClicked = false;
+      const dialogPortal = $('dialog-portal');
+      dialogPortal.innerHTML = `
+        <div role="dialog">
+          <button type="button" aria-label="Refresh">Refresh</button>
+        </div>
+      `;
+      const refreshBtn = dialogPortal.querySelector('button[aria-label="Refresh"]');
+      refreshBtn.addEventListener('click', () => {
+        refreshClicked = true;
+      });
+
+      location.hash = '';
+      quickBtn?.querySelector('a, button')?.click();
+
+      // 等待 observer 与刷新逻辑处理
+      await new Promise(r => setTimeout(r, 200));
+
+      assert(
+        '进入 Usage 自动点击 Refresh 按钮',
+        'location.hash 为 #settings/usage 且 Refresh 按钮被点击',
+        `hash: ${location.hash}, clicked: ${refreshClicked}`,
+        location.hash === '#settings/usage' && refreshClicked
+      );
+
+      // 用例 4：模拟弹出用户中心菜单，测试 Usage 选项自动注入
+      const portal = $('menu-portal');
+      portal.innerHTML = `
+        <div role="menu" data-perf-overlay="user_menu" class="mock-menu">
+          <div role="presentation"><span>user@example.com</span></div>
+          <div role="menuitem" data-testid="user-menu-settings" class="mock-menu-item">
+            <span class="size-icon"><span data-cds="Icon"></span></span>
+            <span class="truncate">Settings</span>
+            <span class="flex"><span data-cds="Shortcut">⇧⌘,</span></span>
+          </div>
+          <div role="menuitem" data-testid="user-menu-language" class="mock-menu-item">
+            <span class="size-icon"><span data-cds="Icon"></span></span>
+            <span class="truncate">Language</span>
+          </div>
+        </div>
+      `;
+
+      await new Promise(r => setTimeout(r, 50));
+
+      const menuItem = document.querySelector('[data-user-script-claude-quick-usage-menu-item]');
+      assert(
+        '用户菜单中注入 Usage 选项',
+        '存在且紧随 Settings 之后，文案为 Usage',
+        menuItem ? menuItem.querySelector('.truncate')?.textContent : '未找到',
+        Boolean(menuItem && menuItem.querySelector('.truncate')?.textContent === 'Usage')
+      );
+
+      // 用例 5：点击菜单 Usage 项更新 hash 并关闭菜单
+      let escapeTriggered = false;
+      const onKeyDown = (e) => {
+        if (e.key === 'Escape') escapeTriggered = true;
+      };
+      document.addEventListener('keydown', onKeyDown, { once: true });
+
+      location.hash = '';
+      menuItem?.click();
+      await new Promise(r => setTimeout(r, 50));
+
+      assert(
+        '点击菜单 Usage 项更新 hash 并关闭菜单',
+        'hash 为 #settings/usage 且收到 Escape 事件',
+        `hash: ${location.hash}, escape: ${escapeTriggered}`,
+        location.hash === '#settings/usage' && escapeTriggered
+      );
+
+      // 汇总
+      const summary = $('summary');
+      summary.textContent = `（${passed}/${total} 通过）`;
+      summary.className = passed === total ? 'pass' : 'fail';
+    }
+
+    $('run').addEventListener('click', runTests);
+    window.addEventListener('DOMContentLoaded', runTests);
+  </script>
+</body>
+</html>
