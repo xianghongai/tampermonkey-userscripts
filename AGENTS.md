@@ -14,7 +14,7 @@
 | `<script-name>/README.md` | 是 | 脚本说明，写法见下节 |
 | `<script-name>/screenshots/<script-name>-<scene>-1280x800.png` | 否 | 生成的截图 |
 | `<script-name>/screenshots/src/<script-name>-<scene>.html` | 否 | 截图的 HTML 原稿，界面变化时改原稿再重新渲染 |
-| `<script-name>/test/<script-name>-test.html` | 否 | 测试页，用浏览器直接打开，先引入 `__tests__/gm-mock.js` 再引入脚本本体；脚本行为变化时同步更新用例 |
+| `<script-name>/test/<script-name>-test.html` | 否 | 复杂脚本测试页，用浏览器直接打开，先引入 `__tests__/gm-mock.js` 再引入脚本本体；脚本行为变化时同步更新用例 |
 
 - 截图文件名保留 `<script-name>-` 前缀。Greasy Fork 更新时按文件名对应已发布的截图，改名会导致对不上。
 - 截图原稿里的渲染命令以项目根目录为工作目录，路径写到脚本目录一级，例如 `<script-name>/screenshots/src/...`。
@@ -44,8 +44,8 @@ README 给使用者看，只讲用途，不讲技术实现。
 
 ## 验证
 
-- 逻辑与行为用测试页验证：断言复制内容、事件拦截、DOM 结构这类可以由程序判断的结果。
-- 测试页统一使用 `__tests__/gm-mock.js` 提供的 Tampermonkey API 替身，通过其中的 `GM_mock` 读取调用记录、预置存储、模拟网络响应。
+- 仅高价值、复杂度高的脚本需要编写测试页（如涉及复杂数据处理、状态机、协议拦截、算法等）；轻量 UI 注入、快捷跳转等简单脚本直接在目标页面实机验证即可，不需要另建测试页。
+- 需要测试页的脚本，统一使用 `__tests__/gm-mock.js` 提供的 Tampermonkey API 替身，通过其中的 `GM_mock` 读取调用记录、预置存储、模拟网络响应。
   缺少某个接口时补进 `__tests__/gm-mock.js`，不在单个测试页里另写模拟；只实现日常用到的接口，只面向最新版浏览器。
 - 图标、配色、排版这类视觉效果，Agent 只负责按要求替换，不截图确认，由开发者自行查看是否满意。截图确认耗时长，而视觉是否满意本来就由开发者判断。
 
