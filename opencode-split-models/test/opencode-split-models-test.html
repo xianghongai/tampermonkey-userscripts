@@ -20,6 +20,7 @@
     .pass { color: #1a7f37; }
     .fail { color: #cf222e; font-weight: 600; }
     code { white-space: pre-wrap; word-break: break-all; }
+    .toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
   </style>
 </head>
 <body>
@@ -33,6 +34,10 @@
   </table>
 
   <h2>模拟的 Models 表格</h2>
+  <div class="toolbar">
+    <input type="search" placeholder="Search">
+    <button type="button" aria-label="Model actions">⋯</button>
+  </div>
   <table id="models">
     <thead>
       <tr><th>Model</th><th>Features</th><th>Input</th><th>Output</th><th>Cache Read</th><th>Cache Write</th><th>Enabled</th></tr>
@@ -50,23 +55,24 @@
 
   <!-- 按顺序生成模型行：名称顺序与开关状态混杂，用来验证分组与排序 -->
   <script>
+    // 第三、四项是 Input、Output 价格，其中 Charlie 没有 Input 价格，用来验证排在最后
     const FIXTURE = [
-      ['Foxtrot', true],
-      ['Bravo', false],
-      ['Charlie', true],
-      ['Alpha', false],
-      ['Echo', false],
-      ['Delta', true],
-      ['GLM-5', false],
-      ['Gemini 3', false],
+      ['Foxtrot', true, '$3.00', '$9.00'],
+      ['Bravo', false, '$1.00', '$5.00'],
+      ['Charlie', true, '-', '$6.00'],
+      ['Alpha', false, '$2.00', '$1.00'],
+      ['Echo', false, '$0.50', '$2.00'],
+      ['Delta', true, '$1.00', '$3.00'],
+      ['GLM-5', false, '$4.00', '$8.00'],
+      ['Gemini 3', false, '$1.00', '$4.00'],
     ];
     const tbody = document.querySelector('#models tbody');
-    for (const [name, on] of FIXTURE) {
+    for (const [name, on, input, output] of FIXTURE) {
       const id = name.toLowerCase().replace(/\s+/g, '-');
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td><div><span class="break-words"><span>${name}</span></span> <span title="${id}">${id}</span></div></td>
-        <td>-</td><td>$1.00</td><td>$2.00</td><td>-</td><td>-</td>
+        <td>-</td><td>${input}</td><td>${output}</td><td>-</td><td>-</td>
         <td><input type="checkbox" role="switch" aria-checked="${on}" aria-label="${name} enabled"></td>`;
       tbody.append(tr);
     }
@@ -82,6 +88,15 @@
     };
   </script>
 
+  <!-- 分组开关的状态记在 localStorage 里，每次运行前清掉，保证从默认状态（开启）开始 -->
+  <script>
+    try {
+      localStorage.removeItem('user-script-opencode-split-models-grouped');
+    } catch {
+      // 无法访问存储时不影响测试
+    }
+  </script>
+
   <script src="../../__tests__/gm-mock.js" data-name="OpenCode: Split Models (test page)"></script>
   <script src="../opencode-split-models.user.js"></script>
 
@@ -89,7 +104,8 @@
     const GROUP_ATTR = 'data-user-script-opencode-split-models-group';
     const GROUP_CLASS = 'user-script-opencode-split-models-group';
     const otherTbody = document.querySelector('#other tbody');
-    const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+    // 脚本在下一帧统一整理，等到那一帧结束后再读取结果
+    const settle = () => new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
 
     const nameOf = (tr) => tr.cells[0].querySelector('.break-words')?.textContent.trim() ?? tr.textContent.trim();
     const rowOf = (name) => [...tbody.rows].find((tr) => nameOf(tr) === name);
@@ -97,6 +113,8 @@
     const setOn = (name, on) => toggleOf(name).setAttribute('aria-checked', String(on));
     // 按页面顺序列出：分组标题取文字，模型行取名称
     const seq = () => [...tbody.children].map((tr) => (tr.hasAttribute(GROUP_ATTR) ? tr.textContent.trim() : nameOf(tr)));
+    // 模型表 Input、Output、Cache Read、Cache Write 四列表头的 aria-sort
+    const ariaOf = () => [...document.querySelectorAll('#models thead th')].slice(2, 6).map((th) => th.getAttribute('aria-sort'));
 
     // 搜索用例中被框架删掉的行，之后用它们的副本模拟框架重新加入
     const removed = [];
@@ -204,6 +222,139 @@
         expected: [1, ['Enabled models (2)', 'Bravo', 'Delta', 'Disabled models (6)', 'Alpha', 'Charlie', 'Echo', 'Foxtrot', 'Gemini 3', 'GLM-5']],
       },
       {
+        name: '同一帧内连续多次开关变化，合并整理后结果正确',
+        run: async () => {
+          setOn('Alpha', true);
+          setOn('Echo', true);
+          setOn('Delta', false);
+          await settle();
+          return seq();
+        },
+        expected: ['Enabled models (3)', 'Alpha', 'Bravo', 'Echo', 'Disabled models (5)', 'Charlie', 'Delta', 'Foxtrot', 'Gemini 3', 'GLM-5'],
+      },
+      {
+        name: '点击 Input 表头：组内按输入价格升序，没有价格的排最后',
+        run: async () => {
+          document.querySelectorAll('#models thead th')[2].click();
+          await settle();
+          return [seq(), ariaOf()];
+        },
+        expected: [
+          ['Enabled models (3)', 'Echo', 'Bravo', 'Alpha', 'Disabled models (5)', 'Delta', 'Gemini 3', 'Foxtrot', 'GLM-5', 'Charlie'],
+          ['ascending', 'none', 'none', 'none'],
+        ],
+      },
+      {
+        name: '再点一次 Input：降序，价格相同时仍按名称',
+        run: async () => {
+          document.querySelectorAll('#models thead th')[2].click();
+          await settle();
+          return [seq(), ariaOf()];
+        },
+        expected: [
+          ['Enabled models (3)', 'Alpha', 'Bravo', 'Echo', 'Disabled models (5)', 'GLM-5', 'Foxtrot', 'Delta', 'Gemini 3', 'Charlie'],
+          ['descending', 'none', 'none', 'none'],
+        ],
+      },
+      {
+        name: '第三次点击 Input：恢复按名称排序',
+        run: async () => {
+          document.querySelectorAll('#models thead th')[2].click();
+          await settle();
+          return [seq(), ariaOf()];
+        },
+        expected: [
+          ['Enabled models (3)', 'Alpha', 'Bravo', 'Echo', 'Disabled models (5)', 'Charlie', 'Delta', 'Foxtrot', 'Gemini 3', 'GLM-5'],
+          ['none', 'none', 'none', 'none'],
+        ],
+      },
+      {
+        name: '点击 Output 表头：切换到新列，从升序开始，Input 的标记被清掉',
+        run: async () => {
+          document.querySelectorAll('#models thead th')[3].click();
+          await settle();
+          return [seq(), ariaOf()];
+        },
+        expected: [
+          ['Enabled models (3)', 'Alpha', 'Echo', 'Bravo', 'Disabled models (5)', 'Delta', 'Gemini 3', 'Charlie', 'GLM-5', 'Foxtrot'],
+          ['none', 'ascending', 'none', 'none'],
+        ],
+      },
+      {
+        name: '按回车切换 Input 表头（键盘操作），等同于点击',
+        run: async () => {
+          const th = document.querySelectorAll('#models thead th')[2];
+          th.focus();
+          th.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+          await settle();
+          return [seq(), ariaOf()];
+        },
+        expected: [
+          ['Enabled models (3)', 'Echo', 'Bravo', 'Alpha', 'Disabled models (5)', 'Delta', 'Gemini 3', 'Foxtrot', 'GLM-5', 'Charlie'],
+          ['ascending', 'none', 'none', 'none'],
+        ],
+      },
+      {
+        name: '连按两次回车恢复默认顺序，表头标记全部清掉',
+        run: async () => {
+          const th = document.querySelectorAll('#models thead th')[2];
+          th.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+          th.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+          await settle();
+          return [seq(), ariaOf()];
+        },
+        expected: [
+          ['Enabled models (3)', 'Alpha', 'Bravo', 'Echo', 'Disabled models (5)', 'Charlie', 'Delta', 'Foxtrot', 'Gemini 3', 'GLM-5'],
+          ['none', 'none', 'none', 'none'],
+        ],
+      },
+      {
+        name: 'Model actions 按钮前有分组开关，默认开启',
+        run: () => {
+          const toggle = document.querySelector('.user-script-opencode-split-models-toggle');
+          return [toggle?.getAttribute('role'), toggle?.getAttribute('aria-checked'), toggle?.nextElementSibling?.getAttribute('aria-label')];
+        },
+        expected: ['switch', 'true', 'Model actions'],
+      },
+      {
+        name: '关闭分组后，两组合并为一个列表，按名称排序，没有组标题',
+        run: async () => {
+          document.querySelector('.user-script-opencode-split-models-toggle').click();
+          await settle();
+          return [document.querySelector('.user-script-opencode-split-models-toggle').getAttribute('aria-checked'), seq()];
+        },
+        expected: ['false', ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Gemini 3', 'GLM-5']],
+      },
+      {
+        name: '关闭分组时，表头排序作用于全部模型，没有价格的排最后',
+        run: async () => {
+          document.querySelectorAll('#models thead th')[2].click();
+          await settle();
+          return seq();
+        },
+        expected: ['Echo', 'Bravo', 'Delta', 'Gemini 3', 'Alpha', 'Foxtrot', 'GLM-5', 'Charlie'],
+      },
+      {
+        name: '重新开启分组后，回到两组显示，排序保持',
+        run: async () => {
+          document.querySelector('.user-script-opencode-split-models-toggle').click();
+          await settle();
+          return [document.querySelector('.user-script-opencode-split-models-toggle').getAttribute('aria-checked'), seq()];
+        },
+        expected: ['true', ['Enabled models (3)', 'Echo', 'Bravo', 'Alpha', 'Disabled models (5)', 'Delta', 'Gemini 3', 'Foxtrot', 'GLM-5', 'Charlie']],
+      },
+      {
+        name: '连按两次 Input 表头，恢复默认顺序，供后面的用例使用',
+        run: async () => {
+          const th = document.querySelectorAll('#models thead th')[2];
+          th.click();
+          th.click();
+          await settle();
+          return seq();
+        },
+        expected: ['Enabled models (3)', 'Alpha', 'Bravo', 'Echo', 'Disabled models (5)', 'Charlie', 'Delta', 'Foxtrot', 'Gemini 3', 'GLM-5'],
+      },
+      {
         name: '整理完成后不再改动 DOM（不会反复触发）',
         run: async () => {
           const records = [];
@@ -225,6 +376,24 @@
           return document.querySelectorAll(`tr[${GROUP_ATTR}]`).length;
         },
         expected: 0,
+      },
+      {
+        name: '页面切换时整张表格被替换，新表格同样被分组',
+        run: async () => {
+          const table = document.createElement('table');
+          table.innerHTML = `
+            <thead><tr><th>Model</th><th>Enabled</th></tr></thead>
+            <tbody>
+              <tr><td><span>Lima</span></td><td><input type="checkbox" role="switch" aria-checked="false"></td></tr>
+              <tr><td><span>Kilo</span></td><td><input type="checkbox" role="switch" aria-checked="true"></td></tr>
+            </tbody>`;
+          document.body.append(table);
+          await settle();
+          const result = [...table.tBodies[0].children].map((tr) => (tr.hasAttribute(GROUP_ATTR) ? tr.textContent.trim() : tr.cells[0].textContent.trim()));
+          table.remove();
+          return result;
+        },
+        expected: ['Enabled models (1)', 'Kilo', 'Disabled models (1)', 'Lima'],
       },
     ];
 
