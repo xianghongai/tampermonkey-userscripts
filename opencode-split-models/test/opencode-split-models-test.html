@@ -367,6 +367,29 @@
         expected: 0,
       },
       {
+        name: '框架整批替换行时，插入位置的参照节点仍在 tbody 内（排序后切换开关不再报错）',
+        run: async () => {
+          const rows = [...tbody.rows].filter((tr) => tr.querySelector('input[role="switch"]'));
+          // 模拟 Solid：整批更新前记住某一行后面的节点，删掉所有行后再用它当插入位置
+          const anchor = rows[0].nextSibling;
+          for (const tr of rows) tr.remove();
+          const probe = document.createElement('tr');
+          let result;
+          try {
+            tbody.insertBefore(probe, anchor);
+            result = 'ok';
+          } catch {
+            result = 'throw';
+          }
+          probe.remove();
+          // 放回原来的行，让脚本重新整理，供后面的用例使用
+          for (const tr of rows) tbody.append(tr);
+          await settle();
+          return result;
+        },
+        expected: 'ok',
+      },
+      {
         name: '一个模型都没有时，不显示分组标题',
         run: async () => {
           for (const tr of [...tbody.rows]) {

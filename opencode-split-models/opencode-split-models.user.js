@@ -2,7 +2,7 @@
 // @name         OpenCode: Split Models
 // @name:en      OpenCode: Split Models
 // @namespace    https://github.com/xianghongai
-// @version      1.1.0
+// @version      1.1.1
 // @description  Split the Models page of the OpenCode console into two lists: enabled models on top and disabled models below. Toggling a model moves it to the matching list. Click the Input, Output, Cache Read or Cache Write header to sort each list by price. Turn off the switch next to the Model actions button to show all models in one list.
 // @description:en  Split the Models page of the OpenCode console into two lists: enabled models on top and disabled models below. Toggling a model moves it to the matching list. Click the Input, Output, Cache Read or Cache Write header to sort each list by price. Turn off the switch next to the Model actions button to show all models in one list.
 // @description:zh-CN  把 OpenCode 控制台的 Models 页面分成两个列表：已启用的模型在上，未启用的在下；开关模型后自动移到对应的列表。点击 Input、Output、Cache Read、Cache Write 表头可按价格排序。关闭 Model actions 按钮旁的开关，可以取消分组，把全部模型放在同一个列表中比较价格。
@@ -28,6 +28,7 @@ console.log(GM_info.script.name);
   const TRACK_CLASS = `${PREFIX}-track`;
   const GROUPED_KEY = `${PREFIX}-grouped`;
   const STYLE_ID = `${PREFIX}-style`;
+  const GUARD_TEXT = `${PREFIX}-guard`;
 
   // 两组的标题，顺序即页面上的显示顺序
   const GROUPS = [
@@ -257,6 +258,30 @@ console.log(GM_info.script.name);
     }
   }
 
+  // 页面用 Solid 渲染表格，它按数组顺序管理行。整批替换行时，Solid 会先记下「最后一行后面的
+  // 节点」作为新行的插入位置，再删掉旧行；这个节点若恰好是同一批里被删掉的行，插入时就会抛
+  // "insertBefore: ... is not a child of this node"，页面显示 Something went wrong。
+  // 在每行后面放一个注释节点作护栏，插入位置就永远是 Solid 不认识的节点。注释不参与渲染。
+  function isGuard(node) {
+    return node?.nodeType === Node.COMMENT_NODE && node.data === GUARD_TEXT;
+  }
+
+  // 护栏紧跟在模型行后面，每行只留一个；表里不再有模型行时全部清掉
+  function syncGuards(tbody, rows) {
+    const guards = new Set();
+    for (const row of rows) {
+      let guard = row.nextSibling;
+      if (!isGuard(guard)) {
+        guard = document.createComment(GUARD_TEXT);
+        tbody.insertBefore(guard, row.nextSibling);
+      }
+      guards.add(guard);
+    }
+    for (const node of [...tbody.childNodes]) {
+      if (isGuard(node) && !guards.has(node)) node.remove();
+    }
+  }
+
   function reconcile(table) {
     decorateHeaders(table);
 
@@ -268,28 +293,33 @@ console.log(GM_info.script.name);
     // 一个模型都没有时（加载中或搜索无结果）不显示分组标题，保留框架原本的空状态
     if (!models.enabled.length && !models.disabled.length) {
       for (const tr of titles.values()) tr.remove();
+      syncGuards(tbody, []);
       return;
     }
 
     // 关闭分组时不显示标题，全部模型放在同一个列表里，按当前排序排列
     if (!grouped) {
       for (const tr of titles.values()) tr.remove();
-      placeInOrder(tbody, [...models.enabled, ...models.disabled].sort(compareModels).map(({ row }) => row));
+      const rows = [...models.enabled, ...models.disabled].sort(compareModels).map(({ row }) => row);
+      placeInOrder(tbody, rows);
+      syncGuards(tbody, rows);
       return;
     }
 
     const colspan = table.tHead.rows[0].cells.length;
+    const sequence = [];
+    const rows = [];
     for (const { kind, label } of GROUPS) {
       if (!titles.has(kind)) titles.set(kind, createTitle(kind, colspan));
       setTitleText(titles.get(kind), `${label} (${models[kind].length})`);
-    }
 
-    // 目标顺序：每组的标题在前，本组的行接在后面
-    const sequence = GROUPS.flatMap(({ kind }) => [
-      titles.get(kind),
-      ...models[kind].sort(compareModels).map(({ row }) => row),
-    ]);
+      // 目标顺序：本组的标题在前，本组的行接在后面
+      const groupRows = models[kind].sort(compareModels).map(({ row }) => row);
+      sequence.push(titles.get(kind), ...groupRows);
+      rows.push(...groupRows);
+    }
     placeInOrder(tbody, sequence);
+    syncGuards(tbody, rows);
   }
 
   function reconcileAll() {
