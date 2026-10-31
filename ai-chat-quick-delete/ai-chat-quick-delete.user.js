@@ -3,7 +3,7 @@
 // @name:en      AI Chat Quick Delete
 // @name:zh-CN   AI Chat Quick Delete
 // @namespace    https://github.com/xianghongai
-// @version      1.0.1
+// @version      1.0.2
 // @description  Add a trash icon to each conversation in the sidebar of ChatGPT, Claude, Gemini, DeepSeek, Qwen and Grok to delete it in one click, with the confirmation dialog handled for you (can be switched off).
 // @description:en  Add a trash icon to each conversation in the sidebar of ChatGPT, Claude, Gemini, DeepSeek, Qwen and Grok to delete it in one click, with the confirmation dialog handled for you (can be switched off).
 // @description:zh-CN  在 ChatGPT、Claude、Gemini、DeepSeek、通义千问、Grok 的左侧对话列表中，给每个对话添加删除图标，一键删除，并自动点掉确认框（可在脚本菜单中关闭）。
@@ -54,13 +54,22 @@ console.log(GM_info.script.name);
     'chatgpt.com': {
       items: () => closestAll('a[href^="/c/"][data-interactive-row-link]', '[data-sidebar-cycle-item]'),
       menuButton: (item) => item.querySelector('button[aria-haspopup="menu"]'),
+      // 动作区是一组按钮：「Chat actions」旁边按是否置顶还会出现 Unpin 或 Pin。
+      // 删除图标要停靠在整组按钮左边，所以参照物取组里最左边的那个按钮（通常是 Unpin），
+      // 而不是「Chat actions」本身，否则在置顶的行上会压住左边的 Unpin
+      anchor: (item) => {
+        const menu = item.querySelector('button[aria-haspopup="menu"]');
+        return menu?.parentElement?.parentElement?.firstElementChild ?? menu;
+      },
       pointerOpen: true,
       deleteItem: () => document.querySelector('[role="menu"] [role="menuitem"][class*="text-danger"]'),
       confirm: () => document.querySelector('[role="dialog"] button[type="submit"]'),
     },
     'claude.ai': {
       items: () => closestAll('a[href^="/chat/"][data-row-main-button]', '[data-row]'),
-      menuButton: (item) => item.querySelector('button'),
+      // 重命名时站点会临时移掉这个按钮，改成输入框；按 aria-haspopup 找，不要按第一个 button 找，
+      // 否则会选中脚本自己的图标
+      menuButton: (item) => item.querySelector('button[aria-haspopup="menu"]'),
       deleteItem: () => document.querySelector('[data-testid="delete-chat-trigger"]'),
       confirm: () => lastButton('[role="alertdialog"]'),
     },
@@ -226,11 +235,15 @@ console.log(GM_info.script.name);
     button.setAttribute('aria-label', TEXT.delete);
     button.append(createIcon());
 
-    // 避开列表项自带的「更多」按钮，停靠在它左边
+    // 避开列表项自带的「更多」按钮，停靠在它左边。
+    // 站点在重命名等状态下会临时移除这个按钮：此时参照物可能不存在，也可能恰好是图标自己
+    // （按 button 找的站点规则会选中它）。两种情况下都保持原位，否则图标会以自己为基准越挪越左。
     const place = () => {
-      const nativeRect = (site.anchor?.(item) ?? site.menuButton(item))?.getBoundingClientRect();
-      const itemRect = item.getBoundingClientRect();
-      button.style.right = `${nativeRect?.width ? itemRect.right - nativeRect.left + 2 : 6}px`;
+      const anchor = site.anchor?.(item) ?? site.menuButton(item);
+      const nativeRect = anchor?.getBoundingClientRect();
+      if (nativeRect?.width && !button.contains(anchor)) {
+        button.style.right = `${item.getBoundingClientRect().right - nativeRect.left + 2}px`;
+      }
       // 垫一层与列表项相同的底色，长标题才不会和图标叠在一起
       paintBackground(button, item);
     };

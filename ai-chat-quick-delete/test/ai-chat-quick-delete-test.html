@@ -141,6 +141,18 @@
         document.querySelectorAll('.ds-dropdown-menu, .ds-modal-wrapper').length,
         document.documentElement.hasAttribute('data-user-script-ai-chat-quick-delete-busy'),
       ], [0, false]],
+      ['站点的「更多」按钮暂时消失时，图标留在原位', async () => {
+        addChat('zeta');
+        await settle();
+        const item = icon('zeta').parentElement;
+        // 先悬停一次，让图标按真实位置摆好
+        item.dispatchEvent(new PointerEvent('pointerenter'));
+        const before = icon('zeta').style.right;
+        // 模拟重命名等状态下站点临时移除「更多」按钮
+        item.querySelector('[role="button"]').remove();
+        item.dispatchEvent(new PointerEvent('pointerenter'));
+        return [before !== '', icon('zeta').style.right === before];
+      }, [true, true]],
       ['后续新增的列表项也有图标', async () => {
         addChat('epsilon');
         await settle();
