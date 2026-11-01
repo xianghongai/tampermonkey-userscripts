@@ -3,7 +3,7 @@
 // @name:en      AI Chat Tweaks
 // @name:zh-CN   AI Chat Tweaks
 // @namespace    https://github.com/xianghongai
-// @version      1.0.0
+// @version      1.0.1
 // @description  Make the conversation area and the input box the same width (50vw by default) and your own messages the same bubble style on ChatGPT, Claude, Gemini, DeepSeek, Qwen and Grok, so switching between them does not shift your eyes. The width can be changed from the script menu.
 // @description:en  Make the conversation area and the input box the same width (50vw by default) and your own messages the same bubble style on ChatGPT, Claude, Gemini, DeepSeek, Qwen and Grok, so switching between them does not shift your eyes. The width can be changed from the script menu.
 // @description:zh-CN  让 ChatGPT、Claude、Gemini、DeepSeek、通义千问、Grok 的对话区与输入框统一为同一宽度（默认 50vw），自己发出的消息统一为同一气泡样式，在几个 AI 之间切换时视线不用来回调整；宽度可在脚本菜单中修改。
@@ -125,8 +125,10 @@ console.log(GM_info.script.name);
         selector: ':root, body',
         style: { '--message-list-max-width': `calc(${W} + 88px)` },
       },
-      // 官方类名是哈希，不稳定；用户消息是不含 Markdown 正文的 .ds-message，气泡是它的第一个子元素
-      userBubble: { selector: '.ds-message:not(:has(.ds-markdown)) > div:first-child', style: USER_BUBBLE },
+      // 官方类名是哈希，不稳定；用户消息是不含 Markdown 正文的 .ds-message，正文气泡包着 .ds-collapsible-text。
+      // 带附件时附件卡片和正文气泡是两个并列的子元素，只取正文气泡：附件卡片自带底色和自己的文字颜色，
+      // 一起涂成渐变气泡会把卡片里的文字也刷成白色，浅色主题下就是白底白字
+      userBubble: { selector: '.ds-message:not(:has(.ds-markdown)) > div:has(> .ds-collapsible-text)', style: USER_BUBBLE },
     },
     // 消息气泡自带 32px 左右内边距；输入框容器两侧有 20px 外边距，扣掉后与气泡等宽
     'chat.qwen.ai': {
