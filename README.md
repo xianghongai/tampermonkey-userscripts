@@ -4,6 +4,7 @@ Tampermonkey userscripts for personal use, kept on the `misc` branch. They are n
 
 - [Click to Title](click-to-title/): Make any text on the page the tab title, for single-page apps that never update it.
 - [Confluence 'Estimate & Task'](confluence-estimate-task/): Sum up the effort column of Confluence tables and copy a WBS task list.
+- [DeepSeek: Compact Tokens](deepseek-compact-tokens/): Show token usage in K/M/B units on the DeepSeek Platform usage page.
 - [Double-click to Close](double-click-to-close/): Hold Shift and double-click a page to close the tab.
 - [Google Contacts: Shortcuts](google-contacts-shortcuts/): Keyboard shortcuts to edit contacts and save changes in Google Contacts.
 - [Hi, Jira](hi-jira/): Clicking a Jira field no longer starts editing; Alt+L adds a link.
@@ -18,6 +19,7 @@ Tampermonkey userscripts for personal use, kept on the `misc` branch. They are n
 
 - [Click to Title](click-to-title/)：把页面上的任意文字设为当前标签页的标题，适合不更新标题的单页应用。
 - [Confluence 'Estimate & Task'](confluence-estimate-task/)：汇总 Confluence 表格的工时列，并复制 WBS 任务列表。
+- [DeepSeek: Compact Tokens](deepseek-compact-tokens/)：把 DeepSeek 平台用量页面的 Token 数量显示为 K/M/B 缩写。
 - [Double-click to Close](double-click-to-close/)：按住 Shift 双击页面关闭当前标签页。
 - [Google Contacts: Shortcuts](google-contacts-shortcuts/)：在 Google 通讯录里用快捷键进入编辑、保存修改。
 - [Hi, Jira](hi-jira/)：点击 Jira 字段不再进入编辑，Alt+L 添加链接。
