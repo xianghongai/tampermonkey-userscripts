@@ -2,11 +2,11 @@
 // @name         DeepSeek: Compact Tokens
 // @name:en      DeepSeek: Compact Tokens
 // @namespace    https://github.com/xianghongai
-// @version      1.0.0
-// @description  Show token usage on the DeepSeek Platform usage page in compact K/M/B units; hover the number for the exact value and the unit for Chinese unit conversions.
-// @description:en  Show token usage on the DeepSeek Platform usage page in compact K/M/B units; hover the number for the exact value and the unit for Chinese unit conversions.
-// @description:zh-CN  把 DeepSeek 平台用量页面的 Token 数量显示为 K/M/B 缩写；悬停数值可看精确值与中文换算，悬停单位可看千/万/亿等对照。
-// @description:zh-TW  把 DeepSeek 平台用量頁面的 Token 數量顯示為 K/M/B 縮寫；懸停數值可看精確值與中文換算，懸停單位可看千/萬/億等對照。
+// @version      1.0.1
+// @description  Show token usage on the DeepSeek Platform usage page in compact K/M/B units and add a refresh button to the toolbar; hover the number for the exact value and the unit for Chinese unit conversions.
+// @description:en  Show token usage on the DeepSeek Platform usage page in compact K/M/B units and add a refresh button to the toolbar; hover the number for the exact value and the unit for Chinese unit conversions.
+// @description:zh-CN  把 DeepSeek 平台用量页面的 Token 数量显示为 K/M/B 缩写，并在工具栏添加刷新按钮；悬停数值可看精确值与中文换算，悬停单位可看千/万/亿等对照。
+// @description:zh-TW  把 DeepSeek 平台用量頁面的 Token 數量顯示為 K/M/B 縮寫，並在工具列加入重新整理按鈕；懸停數值可看精確值與中文換算，懸停單位可看千/萬/億等對照。
 // @author       xianghongai <xianghongai@gmail.com>
 // @license      MIT
 // @icon         https://xinlu.ink/favicon.ico
@@ -33,6 +33,18 @@ console.log(GM_info.script.name);
 
   // 缩写数值保留的小数位数，按需改这里
   const DECIMALS = 2;
+
+  const REFRESH_ATTR = `data-${PREFIX}-refresh`;
+  // Lucide refresh-cw
+  const REFRESH_ICON = [
+    '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"',
+    ' stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">',
+    '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>',
+    '<path d="M21 3v5h-5"/>',
+    '<path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>',
+    '<path d="M8 16H3v5"/>',
+    '</svg>',
+  ].join('');
 
   const UNIT_HELP = [
     'Token 单位换算',
@@ -161,7 +173,55 @@ console.log(GM_info.script.name);
     }
   }
 
+  // 按钮提示随站点语言切换；站点没有本地化时退回英文
+  function refreshLabel() {
+    const lang = (document.documentElement.lang || navigator.language || '').toLowerCase();
+    if (lang.startsWith('zh-tw') || lang.startsWith('zh-hk') || lang.includes('hant')) return '重新整理';
+    return lang.startsWith('zh') ? '刷新' : 'Refresh';
+  }
+
+  // 站点没有提供页内刷新：用量数据由 SWR 按筛选参数缓存，重新选择同一条件不会重新请求；
+  // 站点自身需要刷新时也是 window.location.reload()，这里采用同样的方式。
+  // 按钮沿用站点 ds-button 的图标按钮样式，跟随工具栏一起显示。
+  function createRefreshButton() {
+    const label = refreshLabel();
+    const button = document.createElement('div');
+    button.setAttribute(REFRESH_ATTR, '');
+    button.setAttribute('role', 'button');
+    button.setAttribute('tabindex', '0');
+    button.setAttribute('aria-label', label);
+    button.title = label;
+    button.className =
+      'ds-button ds-button--iconLabelPrimary ds-button--icon ds-button--circle ds-button--m ds-button--icon-relative-m';
+    button.style.setProperty('--dsl-button-height', '34px');
+    button.innerHTML = `<div class="ds-button__background"></div><div class="ds-button__icon ds-button__icon--last-child">${REFRESH_ICON}</div>`;
+
+    const reload = () => window.location.reload();
+    button.addEventListener('click', reload);
+    button.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      reload();
+    });
+
+    return button;
+  }
+
+  // 工具栏随页面重绘时按钮可能被移除，每次扫描顺带补回
+  function ensureRefreshButton() {
+    const dateFilter = document.querySelector('[data-filter-item="date"]');
+    const toolbar = dateFilter && dateFilter.parentElement;
+    if (!toolbar || toolbar.querySelector(`[${REFRESH_ATTR}]`)) return;
+
+    const actions = toolbar.querySelectorAll('.ds-button');
+    const group = actions.length > 0 ? actions[actions.length - 1].parentElement : null;
+    if (!group) return;
+
+    group.append(createRefreshButton());
+  }
+
   function refresh() {
+    ensureRefreshButton();
     refreshUnits();
     scan();
   }
