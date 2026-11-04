@@ -3,7 +3,7 @@
 // @name:en      AI Chat Tweaks
 // @name:zh-CN   AI Chat Tweaks
 // @namespace    https://github.com/xianghongai
-// @version      1.0.1
+// @version      1.0.2
 // @description  Make the conversation area and the input box the same width (50vw by default) and your own messages the same bubble style on ChatGPT, Claude, Gemini, DeepSeek, Qwen and Grok, so switching between them does not shift your eyes. The width can be changed from the script menu.
 // @description:en  Make the conversation area and the input box the same width (50vw by default) and your own messages the same bubble style on ChatGPT, Claude, Gemini, DeepSeek, Qwen and Grok, so switching between them does not shift your eyes. The width can be changed from the script menu.
 // @description:zh-CN  让 ChatGPT、Claude、Gemini、DeepSeek、通义千问、Grok 的对话区与输入框统一为同一宽度（默认 50vw），自己发出的消息统一为同一气泡样式，在几个 AI 之间切换时视线不用来回调整；宽度可在脚本菜单中修改。
@@ -43,31 +43,45 @@ console.log(GM_info.script.name);
 
   // ---------- 用户消息气泡 ----------
   // 只统一自己发出的消息，AI 的回复保持各站点原样。
-  // 底色是单色渐变：左上起点是主色掺 12% 白，与右下的主色只差一点，渐变很轻；
-  // 配白色文字和同色的柔和投影；预设五组，在脚本菜单里选。
-  // 当前选中的渐变与投影写在 :root 的变量里，切换时即时生效。
+  // 扁平风格：纯色底 + 一层细描边 + 一层柔和投影，圆角 16px，没有渐变也没有内阴影。
+  // 亮色边：描边用白色，外侧再套一圈同色系的细暗边和柔和扩散，白边在浅色和深色界面上四边都看得清。
+  // 底色取浅色系，跟着站点自己的深浅色界面走：浅色界面浅色底深字，深色界面深色底浅字。
+  // 每组预设分 light / dark 两档，切换预设时底色、文字、描边与投影一起换，圆角不变。
+  // 配色预设写在菜单里；当前这档的底色、文字、描边与投影写进 :root 变量，切换时即时生效。
   const BUBBLE_PRESETS = {
-    violet: { zh: '紫罗兰', en: 'Violet', gradient: 'linear-gradient(135deg, #9970f7, #8b5cf6)', shadow: 'rgba(139, 92, 246, .3)' },
-    rose: { zh: '玫红', en: 'Rose', gradient: 'linear-gradient(135deg, #f55671, #f43f5e)', shadow: 'rgba(244, 63, 94, .3)' },
-    azure: { zh: '湛蓝', en: 'Azure', gradient: 'linear-gradient(135deg, #5391f7, #3b82f6)', shadow: 'rgba(59, 130, 246, .3)' },
-    amber: { zh: '橙黄', en: 'Amber', gradient: 'linear-gradient(135deg, #fa8432, #f97316)', shadow: 'rgba(249, 115, 22, .3)' },
-    teal: { zh: '青绿', en: 'Teal', gradient: 'linear-gradient(135deg, #2dc190, #10b981)', shadow: 'rgba(16, 185, 129, .3)' },
+    ash: {
+      zh: '浅灰', en: 'Light Gray',
+      light: { background: '#f0f0f2', color: '#1f1f21', border: '1px solid #ffffff', shadow: '0 0 0 1px rgba(31, 31, 33, .065), 0 0 6px rgba(31, 31, 33, .07)' },
+      dark: { background: '#2f2f34', color: '#f2f2f5', border: '1px solid rgba(255, 255, 255, .26)', shadow: '0 0 0 1px rgba(0, 0, 0, .28), 0 0 8px rgba(0, 0, 0, .27)' },
+    },
+    blush: {
+      zh: '樱粉', en: 'Blush',
+      light: { background: '#f8dfe7', color: '#3d1421', border: '1px solid #ffffff', shadow: '0 0 0 1px rgba(61, 20, 33, .065), 0 0 6px rgba(61, 20, 33, .07)' },
+      dark: { background: '#4a2a35', color: '#fbe9ef', border: '1px solid rgba(255, 255, 255, .26)', shadow: '0 0 0 1px rgba(38, 12, 24, .3), 0 0 8px rgba(38, 12, 24, .27)' },
+    },
+    lavender: {
+      zh: '薰衣草', en: 'Lavender',
+      light: { background: '#e4e0f5', color: '#262140', border: '1px solid #ffffff', shadow: '0 0 0 1px rgba(38, 33, 64, .065), 0 0 6px rgba(38, 33, 64, .07)' },
+      dark: { background: '#2f2a45', color: '#ece9f8', border: '1px solid rgba(255, 255, 255, .26)', shadow: '0 0 0 1px rgba(20, 16, 38, .3), 0 0 8px rgba(20, 16, 38, .27)' },
+    },
+    amber: {
+      zh: '琥珀', en: 'Amber',
+      light: { background: '#f6e3c4', color: '#3a2508', border: '1px solid #ffffff', shadow: '0 0 0 1px rgba(58, 37, 8, .065), 0 0 6px rgba(58, 37, 8, .07)' },
+      dark: { background: '#4a3816', color: '#fbeed8', border: '1px solid rgba(255, 255, 255, .26)', shadow: '0 0 0 1px rgba(45, 28, 6, .3), 0 0 8px rgba(45, 28, 6, .27)' },
+    },
+    lime: {
+      zh: '青柠', en: 'Lime',
+      light: { background: '#e3f1c9', color: '#22300f', border: '1px solid #ffffff', shadow: '0 0 0 1px rgba(34, 48, 15, .065), 0 0 6px rgba(34, 48, 15, .07)' },
+      dark: { background: '#3a4a22', color: '#f2f8e2', border: '1px solid rgba(255, 255, 255, .26)', shadow: '0 0 0 1px rgba(28, 38, 12, .3), 0 0 8px rgba(28, 38, 12, .27)' },
+    },
   };
-  const DEFAULT_PRESET = 'violet';
-  // 叠在渐变上的噪点纹理，五组预设共用：SVG feTurbulence 生成白色颗粒，160px 一块无缝平铺。
-  // baseFrequency 控制颗粒粗细（越大越细），feColorMatrix 最后一行的 NOISE_OPACITY 控制浓淡。
-  const NOISE_OPACITY = 0.3;
-  const NOISE = `url("data:image/svg+xml,${encodeURIComponent(
-    "<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'>"
-    + "<filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.6' numOctaves='2' stitchTiles='stitch'/>"
-    + `<feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 ${NOISE_OPACITY} 0'/></filter>`
-    + "<rect width='100%' height='100%' filter='url(#n)'/></svg>",
-  )}")`;
+  const DEFAULT_PRESET = 'ash';
   const USER_BUBBLE = {
-    background: `${NOISE}, var(--${PREFIX}-bubble)`,
-    color: '#fff',
-    'box-shadow': `0 4px 14px var(--${PREFIX}-bubble-shadow)`,
-    'border-radius': '18px',
+    background: `var(--${PREFIX}-bubble)`,
+    color: `var(--${PREFIX}-bubble-color)`,
+    border: `var(--${PREFIX}-bubble-border)`,
+    'box-shadow': `var(--${PREFIX}-bubble-shadow)`,
+    'border-radius': '16px',
     padding: '10px 16px',
     // 各站点的气泡有的按内容收窄、有的铺满整行，统一成对话区宽度的 68%、靠右，几个 AI 里一样宽
     width: `calc(${W} * .68)`,
@@ -127,7 +141,7 @@ console.log(GM_info.script.name);
       },
       // 官方类名是哈希，不稳定；用户消息是不含 Markdown 正文的 .ds-message，正文气泡包着 .ds-collapsible-text。
       // 带附件时附件卡片和正文气泡是两个并列的子元素，只取正文气泡：附件卡片自带底色和自己的文字颜色，
-      // 一起涂成渐变气泡会把卡片里的文字也刷成白色，浅色主题下就是白底白字
+      // 一起涂成气泡底色会把卡片里的文字也刷成白色，浅色主题下就是白底白字
       userBubble: { selector: '.ds-message:not(:has(.ds-markdown)) > div:has(> .ds-collapsible-text)', style: USER_BUBBLE },
     },
     // 消息气泡自带 32px 左右内边距；输入框容器两侧有 20px 外边距，扣掉后与气泡等宽
@@ -153,6 +167,21 @@ console.log(GM_info.script.name);
   const roles = SITES[location.hostname];
   if (!roles) return;
 
+  // ---------- 深浅色判断 ----------
+  // 站点自己的深浅色不一定跟系统设置一致（在浅色系统里手动把 ChatGPT 切成深色很常见），
+  // 所以按页面上真正渲染出来的背景色算亮度；页面背景全透明时退回系统的 prefers-color-scheme。
+  const pageIsDark = () => {
+    for (const el of [document.body, document.documentElement]) {
+      if (!el) continue;
+      const parts = getComputedStyle(el).backgroundColor.match(/[\d.]+/g);
+      if (!parts) continue;
+      const [r, g, b, a = 1] = parts.map(Number);
+      if (a < .5) continue;
+      return (r * .2126 + g * .7152 + b * .0722) / 255 < .5;
+    }
+    return matchMedia('(prefers-color-scheme: dark)').matches;
+  };
+
   // ---------- 宽度设置 ----------
 
   let width = GM_getValue('width', DEFAULT_WIDTH);
@@ -161,10 +190,25 @@ console.log(GM_info.script.name);
 
   const lang = navigator.language.startsWith('zh') ? 'zh' : 'en';
   const rootStyle = document.documentElement.style;
+  let dark = pageIsDark();
+  // 当前预设取当前界面深浅色对应的那一档
+  const spec = () => BUBBLE_PRESETS[preset][dark ? 'dark' : 'light'];
+
   const applyVars = () => {
+    const { background, color, border, shadow } = spec();
     rootStyle.setProperty(`--${PREFIX}`, width);
-    rootStyle.setProperty(`--${PREFIX}-bubble`, BUBBLE_PRESETS[preset].gradient);
-    rootStyle.setProperty(`--${PREFIX}-bubble-shadow`, BUBBLE_PRESETS[preset].shadow);
+    rootStyle.setProperty(`--${PREFIX}-bubble`, background);
+    rootStyle.setProperty(`--${PREFIX}-bubble-color`, color);
+    rootStyle.setProperty(`--${PREFIX}-bubble-border`, border);
+    rootStyle.setProperty(`--${PREFIX}-bubble-shadow`, shadow);
+  };
+
+  // 站点切换深浅色后重新判断一次，变了就换成另一档配色
+  const refreshTheme = () => {
+    const next = pageIsDark();
+    if (next === dark) return;
+    dark = next;
+    applyVars();
   };
 
   const registerMenus = () => {
@@ -202,10 +246,32 @@ console.log(GM_info.script.name);
   // 变量写在 :root 的行内样式上，页面脚本替换 <html> 属性时也要补回来
   applyVars();
   new MutationObserver(() => {
+    const { background, color, border, shadow } = spec();
     if (rootStyle.getPropertyValue(`--${PREFIX}`) !== width
-      || rootStyle.getPropertyValue(`--${PREFIX}-bubble`) !== BUBBLE_PRESETS[preset].gradient
-      || rootStyle.getPropertyValue(`--${PREFIX}-bubble-shadow`) !== BUBBLE_PRESETS[preset].shadow) applyVars();
+      || rootStyle.getPropertyValue(`--${PREFIX}-bubble`) !== background
+      || rootStyle.getPropertyValue(`--${PREFIX}-bubble-color`) !== color
+      || rootStyle.getPropertyValue(`--${PREFIX}-bubble-border`) !== border
+      || rootStyle.getPropertyValue(`--${PREFIX}-bubble-shadow`) !== shadow) applyVars();
   }).observe(document.documentElement, { attributes: true, attributeFilter: ['style'] });
+
+  // 站点切换深浅色时，<html> 或 <body> 上的 class / data-theme / style 会变，变了就重新判断
+  const themeObserver = new MutationObserver(() => refreshTheme());
+  const watched = new WeakSet();
+  const watchTheme = (el) => {
+    if (!el || watched.has(el)) return;
+    watched.add(el);
+    themeObserver.observe(el, { attributes: true, attributeFilter: ['class', 'style', 'data-theme'] });
+  };
+  watchTheme(document.documentElement);
+  // body 在文档开始时还不存在，出来之后才能读到它真正的背景色
+  const onReady = () => {
+    watchTheme(document.body);
+    refreshTheme();
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', onReady);
+  else onReady();
+  // 跟着系统走的站点，切系统深浅色时也要跟着换
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', refreshTheme);
 
   // ---------- 打标记与样式 ----------
 

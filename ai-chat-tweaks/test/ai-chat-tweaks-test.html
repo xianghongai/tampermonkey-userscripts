@@ -13,7 +13,7 @@
   -->
   <style>
     :root { color-scheme: light dark; }
-    body { margin: 0; padding: 24px 16px; font: 14px/1.6 system-ui, sans-serif; }
+    body { margin: 0; padding: 24px 16px; font: 14px/1.6 system-ui, sans-serif; background: #fff; }
     h1 { font-size: 20px; }
     h2 { margin-top: 32px; font-size: 16px; }
     table { width: 100%; border-collapse: collapse; }
@@ -59,7 +59,7 @@
       ['输入框与对话区等宽', async () => width('composer') === width('column'), true],
       ['给官方元素打上自己的类名（宽度变量）', async () => $('column').classList.contains(VARS_CLASS) && document.documentElement.classList.contains(VARS_CLASS), true],
       ['用户消息气泡被打上自己的类名', async () => $('user-bubble').classList.contains(BUBBLE_CLASS), true],
-      ['用户消息气泡的样式在我们的类上', async () => { const s = getComputedStyle($('user-bubble')); return [s.borderRadius, s.paddingLeft]; }, ['18px', '16px']],
+      ['用户消息气泡的样式在我们的类上', async () => { const s = getComputedStyle($('user-bubble')); return [s.borderRadius, s.paddingLeft]; }, ['16px', '16px']],
       ['气泡宽度为对话区宽度的 68%', async () => Math.round($('user-bubble').getBoundingClientRect().width), Math.round(innerWidth * 0.5 * 0.68)],
       ['AI 回复不被改动', async () => $('ai-reply').className === '' && getComputedStyle($('ai-reply')).borderRadius === '0px', true],
       ['后加入的用户消息同样打标记', async () => {
@@ -71,26 +71,38 @@
         el.remove();
         return ok;
       }, true],
-      ['默认气泡为紫罗兰渐变，三组预设都已注册', async () => [
-        getComputedStyle($('user-bubble')).backgroundImage.includes('rgb(139, 92, 246)'),
-        ['violet', 'rose', 'azure', 'amber', 'teal'].every((key) => GM_mock.menu.has(`bubble-${key}`)),
-        GM_mock.menu.get('bubble-violet').name.startsWith('✓'),
-      ], [true, true, true]],
-      ['选玫红：渐变即时切换并保存，勾选标记移动', async () => {
-        GM_mock.menu.get('bubble-rose').callback();
+      ['默认气泡为浅灰底深字，五组预设都已注册', async () => [
+        getComputedStyle($('user-bubble')).backgroundColor,
+        getComputedStyle($('user-bubble')).color,
+        ['ash', 'blush', 'lavender', 'amber', 'lime'].every((key) => GM_mock.menu.has(`bubble-${key}`)),
+        GM_mock.menu.get('bubble-ash').name.startsWith('✓'),
+      ], ['rgb(240, 240, 242)', 'rgb(31, 31, 33)', true, true]],
+      ['页面换成深色底，气泡跟着换成深灰底白字', async () => {
+        document.body.style.background = '#111';
         await settle();
+        const s = getComputedStyle($('user-bubble'));
+        const dark = [s.backgroundColor, s.color];
+        document.body.style.background = '#fff';
+        await settle();
+        return dark;
+      }, ['rgb(47, 47, 52)', 'rgb(242, 242, 245)']],
+      ['选琥珀：配色即时切换并保存，勾选标记移动', async () => {
+        GM_mock.menu.get('bubble-amber').callback();
+        await settle();
+        const s = getComputedStyle($('user-bubble'));
         return [
-          getComputedStyle($('user-bubble')).backgroundImage.includes('rgb(244, 63, 94)'),
+          s.backgroundColor,
+          s.borderTopColor,
           GM_mock.values.get('bubble'),
-          GM_mock.menu.get('bubble-rose').name.startsWith('✓'),
-          GM_mock.menu.get('bubble-violet').name.startsWith('✓'),
+          GM_mock.menu.get('bubble-amber').name.startsWith('✓'),
+          GM_mock.menu.get('bubble-ash').name.startsWith('✓'),
         ];
-      }, [true, 'rose', true, false]],
-      ['页面清掉 <html> 行内样式后，渐变也被补回', async () => {
+      }, ['rgb(246, 227, 196)', 'rgb(255, 255, 255)', 'amber', true, false]],
+      ['页面清掉 <html> 行内样式后，配色也被补回', async () => {
         html.removeAttribute('style');
         await settle();
-        return getComputedStyle($('user-bubble')).backgroundImage.includes('rgb(244, 63, 94)');
-      }, true],
+        return getComputedStyle($('user-bubble')).backgroundColor;
+      }, 'rgb(246, 227, 196)'],
       ['菜单命令已注册，标题带当前宽度', async () => /50vw/.test(menu().name), true],
       ['通过菜单改为 900px', async () => {
         window.prompt = () => '900px';
