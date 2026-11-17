@@ -78,6 +78,10 @@ console.log(GM_info.script.name);
   }
 
   // ---------- 拦截点击 ----------
+  // 点击事件只在发生它的文档里传递，跨域 iframe 里的点击不会冒泡到顶层页面，脚本必须注入进那个 iframe 才有效。
+  // Tampermonkey 默认的 Blacklisted Pages 内置了 *stripe.com/*，在 Stripe 的页面和 iframe 里不执行任何用户脚本，
+  // 脚本层面无法绕过。比如 claude.ai/upgrade 的 Billing information 表单位于 js.stripe.com 的 iframe 内，Alt+点击无效；
+  // 要在那里生效，需使用者在 Tampermonkey 设置里移除该条黑名单，并自行权衡安全风险。
   // 一次点击依次触发 pointerdown → mousedown → pointerup → mouseup → click，页面可能在其中任何一步响应：
   // 有的在 mousedown 上导航（如 Axure 导出的原型），有的在 pointerdown 上打开菜单。
   // 所以整条链都在 window 的捕获阶段拦下，赶在页面的监听器之前；拦下 mousedown 也顺带阻止了拖选文字。
